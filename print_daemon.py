@@ -67,45 +67,48 @@ log = logging.getLogger("apv")
 
 # ── ZPL label (105 × 53 mm, DPI-aware) ───────────────────────────────────────
 #
-#  Layout (all sizes calculated from mm so it scales at 203 or 300 dpi):
+#  Reproduit l'aperçu HTML (thème sombre → impression noir/blanc) :
 #
 #   ┌──────────────────────────────────────────────┐
-#   │ ██ APV ROUEN  Mary Automobiles  ██ (3mm bar)│
+#   │ APV ROUEN - Mary Automobiles           [RC]  │ ~3 mm (header + sépar.)
 #   ├──────────────────────────────────────────────┤
-#   │ ORDRE DE REPARATION          15/06 11:15    │ 3mm
-#   ├──────────────────────────────────────────────┤
+#   │         ORDRE DE REPARATION                  │ ~3 mm
 #   │                                              │
-#   │         1  2  3  4  5  6   (OR, 32mm high) │
+#   │         1  2  3  4  5  6                    │ ~33 mm  (OR grand)
 #   │                                              │
 #   ├──────────────────────────────────────────────┤
-#   │ Magasinier : RC                              │ 3.5mm
-#   │ ██████████████████████████████  (3mm bar)  │
+#   │              15/06/2026  11:15              │ ~4 mm  (footer centré)
 #   └──────────────────────────────────────────────┘
-#   Total: ~47mm / 53mm used (89%)
+#   Total : ~43 mm / 53 mm  (81 %)  — le reste est la marge de découpe
 
 def build_zpl(or_number: str, magasinier: str) -> str:
     dpm = LABEL_DPI / 25.4          # dots per mm
 
     def d(mm): return round(mm * dpm)
 
-    PW = d(105)                     # label width
-    LL = d(53)                      # label height
+    PW = d(105)
+    LL = d(53)
 
-    # Vertical layout (mm from top)
-    BAR_H   = d(3.5)                # blue bar height
-    HDR_Y   = d(0.4)                # header text Y inside bar
-    SEP1    = BAR_H + d(0.3)        # first separator Y
-    SUB_Y   = SEP1 + d(0.6)        # sub-label "ORDRE DE REPARATION"
-    SUB_H   = d(2.8)                # sub-label font height
-    OR_Y    = SUB_Y + SUB_H + d(1) # OR number starts here
-    OR_H    = d(31)                 # OR font height  (fills most of label)
-    OR_W    = min(d(13.5), (PW - d(2)) // 6)  # width per char, max 6 fit
-    SEP2    = OR_Y + OR_H + d(1)   # second separator
-    FOOT_Y  = SEP2 + d(0.8)        # footer text
-    FOOT_H  = d(3.2)               # footer font height
-    BAR2_Y  = FOOT_Y + FOOT_H + d(1)  # bottom bar
+    # ── Hauteurs (mm) ────────────────────────────────────────────────
+    HDR_H  = d(3.2)          # hauteur bande header
+    HDR_TH = d(2.6)          # police header
+    SEP    = d(0.3)          # épaisseur séparateur
+    SUB_H  = d(2.6)          # sous-titre "ORDRE DE REPARATION"
+    OR_H   = d(33)           # OR number — grand
+    OR_W   = min(d(13.5), (PW - d(3)) // 6)
+    FOOT_H = d(3.5)          # footer date (centré)
+    FOOT_TH= d(2.8)
 
-    now = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
+    # ── Positions Y (mm) ─────────────────────────────────────────────
+    Y_hdr  = 0
+    Y_sep1 = HDR_H
+    Y_sub  = Y_sep1 + SEP + d(0.5)
+    Y_or   = Y_sub  + SUB_H + d(0.8)
+    Y_sep2 = Y_or   + OR_H  + d(0.8)
+    Y_foot = Y_sep2 + SEP   + d(0.5)
+
+    now   = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
+    rc_x  = PW - d(10)       # position X du badge RC (droite)
 
     lines = [
         "^XA",
@@ -113,28 +116,24 @@ def build_zpl(or_number: str, magasinier: str) -> str:
         f"^LL{LL}",
         "^LH0,0",
 
-        # Top blue bar + white title
-        f"^FO0,0^GB{PW},{BAR_H},{BAR_H}^FS",
-        f"^FO{d(1.5)},{HDR_Y}^A0N,{BAR_H - d(0.8)},{BAR_H - d(0.8)}^FR^FDAPV ROUEN  Mary Automobiles^FS",
+        # ── Header : titre gauche + badge RC droit ───────────────────
+        f"^FO{d(1.5)},{Y_hdr + d(0.3)}^A0N,{HDR_TH},{HDR_TH}^FDAPV ROUEN - Mary Automobiles^FS",
+        f"^FO{rc_x},{Y_hdr + d(0.2)}^A0N,{HDR_TH},{HDR_TH}^FD{magasinier}^FS",
 
-        # Separator
-        f"^FO0,{SEP1}^GB{PW},{d(0.25)},{d(0.25)}^FS",
+        # Séparateur 1
+        f"^FO0,{Y_sep1}^GB{PW},{SEP},{SEP}^FS",
 
-        # Sub-label left + date right
-        f"^FO{d(1.5)},{SUB_Y}^A0N,{SUB_H},{SUB_H}^FDORDRE DE REPARATION^FS",
-        f"^FO{PW - d(35)},{SUB_Y}^A0N,{SUB_H},{SUB_H}^FD{now}^FS",
+        # ── Sous-titre centré ────────────────────────────────────────
+        f"^FO{d(3)},{Y_sub}^A0N,{SUB_H},{SUB_H}^FDORDRE DE REPARATION^FS",
 
-        # OR number – big, full width
-        f"^FO{d(1.5)},{OR_Y}^A0N,{OR_H},{OR_W}^FD{or_number}^FS",
+        # ── OR – chiffres larges ─────────────────────────────────────
+        f"^FO{d(1.5)},{Y_or}^A0N,{OR_H},{OR_W}^FD{or_number}^FS",
 
-        # Separator
-        f"^FO0,{SEP2}^GB{PW},{d(0.25)},{d(0.25)}^FS",
+        # Séparateur 2
+        f"^FO0,{Y_sep2}^GB{PW},{SEP},{SEP}^FS",
 
-        # Footer
-        f"^FO{d(1.5)},{FOOT_Y}^A0N,{FOOT_H},{FOOT_H}^FDMagasinier : {magasinier}^FS",
-
-        # Bottom blue bar
-        f"^FO0,{BAR2_Y}^GB{PW},{BAR_H},{BAR_H}^FS",
+        # ── Footer : date centrée ────────────────────────────────────
+        f"^FO{PW // 2 - d(25)},{Y_foot}^A0N,{FOOT_TH},{FOOT_TH}^FD{now}^FS",
 
         "^XZ",
     ]
