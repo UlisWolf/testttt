@@ -11,6 +11,6 @@ oShell.Environment("PROCESS")("PRINTER_NAME")     = ""
 oShell.Environment("PROCESS")("POLL_INTERVAL")    = "5"
 
 ' Lancer Python en arrière-plan (0 = fenêtre cachée, False = ne pas attendre)
-oShell.Run "python """ & sDir & "\print_daemon.py""", 0, False
+oShell.Run "py """ & sDir & "\print_daemon.py""", 0, False
 
 Set oShell = Nothing
