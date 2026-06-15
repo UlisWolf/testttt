@@ -1,16 +1,15 @@
-import { Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import RouteList from './pages/RouteList'
-import RouteDetail from './pages/RouteDetail'
+import { Suspense, lazy } from 'react'
+
+const MapHome = lazy(() => import('./pages/MapHome'))
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/routes/:type" element={<RouteList />} />
-        <Route path="/routes/:type/:id" element={<RouteDetail />} />
-      </Routes>
-    </div>
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-screen bg-slate-900 text-white text-sm">
+        Chargement…
+      </div>
+    }>
+      <MapHome />
+    </Suspense>
   )
 }
