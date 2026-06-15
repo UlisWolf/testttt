@@ -65,96 +65,103 @@ logging.basicConfig(
 )
 log = logging.getLogger("apv")
 
-# ── ZPL — correspond exactement au preview webapp (paysage 105×53 mm) ─────────
+# ── ZPL PAYSAGE 105×53 mm — Godex DT4x ───────────────────────────────────────
 #
-#   PW = 105 mm  (largeur)   LL = 53 mm  (hauteur / avance papier)
+#   ^PW = 105 mm (largeur de l'étiquette)
+#   ^LL =  53 mm (hauteur / longueur d'avance papier)
 #
-#   ┌──────────────────────────────────────────────────── 105 mm ──┐
-#   │ MARY                                              ┌────────┐ │
-#   │ Automobiles                                       │   RC   │ │  ~11 mm
-#   ├───────────────────────────────────────────────────┴────────┴─┤
-#   │         O R D R E   D E   R E P A R A T I O N               │  ~3 mm
-#   │                                                              │
-#   │            3     0     6     5     4     8                   │  ~20 mm
-#   │                                                              │
-#   ├──────────────────────────────────────────────────────────────┤
-#   │                    15/06/2026   11:49                        │  ~4 mm
-#   └──────────────────────────────────────────────────────────────┘
-#
-#  Si l'étiquette est coupée à la moitié → changer LABEL_DPI=300 dans le VBS
-
-ORDRE_SPACED = "O R D R E   D E   R E P A R A T I O N"
+#   ┌───── MARY          ────────────────── 105 mm ──── ┌──────────┐ ─┐
+#   │      Automobiles                                   │    RC    │  │ ~12 mm
+#   ├────────────────────────────────────────────────────┴──────────┴──┤
+#   │          O R D R E   D E   R E P A R A T I O N                  │  ~6 mm
+#   │                                                                  │
+#   │        3       0       6       5       4       8                 │ ~20 mm
+#   │                                                                  │
+#   ├──────────────────────────────────────────────────────────────────┤
+#   │                   15/06/2026   11:49                             │  ~5 mm
+#   └──────────────────────────────────────────────────────────────────┘
+#                                                                 53 mm
 
 def build_zpl(or_number: str, magasinier: str) -> str:
     dpm = LABEL_DPI / 25.4
 
     def d(mm): return round(mm * dpm)
 
-    PW  = d(105)   # largeur paysage
-    LL  = d(53)    # hauteur paysage
-    SEP = max(2, d(0.25))
-    MAR = d(1.5)
+    PW  = d(105)   # largeur étiquette
+    LL  = d(53)    # hauteur étiquette
+    MAR = d(2.0)
+    SEP = max(2, d(0.3))
 
-    # ── Polices ───────────────────────────────────────────────────
-    MARY_H = d(5.5);  MARY_W = d(4.5)   # MARY — grand
-    AUTO_H = d(2.0);  AUTO_W = d(1.5)   # Automobiles
-    RC_H   = d(4.8);  RC_W   = d(3.8)   # RC dans cadre
-    SUB_H  = d(1.9);  SUB_W  = d(1.35)  # ORDRE DE REPARATION (lettre-espacé)
-    DATE_H = d(2.4);  DATE_W = d(1.8)   # date bas
+    # ── Polices ──────────────────────────────────────────────────
+    MARY_H = d(7.5);  MARY_W = d(6.5)    # MARY — gras visible
+    AUTO_H = d(2.8);  AUTO_W = d(2.2)    # Automobiles
+    RC_H   = d(7.0);  RC_W   = d(6.0)    # RC dans cadre
+    SUB_H  = d(2.2);  SUB_W  = d(1.6)    # ORDRE DE REPARATION (espacement)
+    DATE_H = d(2.5);  DATE_W = d(1.9)    # date
 
-    # ── Cadre RC (haut droite) ────────────────────────────────────
-    BOX_W = d(13.5); BOX_H = d(9.5); BOX_T = max(2, d(0.4))
+    # ── Cadre RC (haut droite) ───────────────────────────────────
+    BOX_W = d(20);  BOX_H = d(12);  BOX_T = max(4, d(0.7))
     BOX_X = PW - BOX_W - MAR
-    BOX_Y = d(1.0)
+    BOX_Y = d(0.8)
     RC_TX = BOX_X + (BOX_W - 2 * RC_W) // 2
     RC_TY = BOX_Y + (BOX_H - RC_H)   // 2
 
-    # ── OR : 6 chiffres espacés sur une seule ligne ───────────────
-    spaced_or = " ".join(or_number)          # "306548" → "3 0 6 5 4 8"
-    n_or      = 2 * len(or_number) - 1      # 11 chars
-    OR_W  = (PW - 2 * MAR) // n_or          # largeur par char
-    OR_H  = min(d(20), round(OR_W * 1.55))  # hauteur proportionnelle, max 20mm
-    OR_X  = (PW - n_or * OR_W) // 2         # centré
-
-    # ── Positions Y ───────────────────────────────────────────────
+    # ── Positions Y du header ────────────────────────────────────
     Y_MARY = d(1.2)
-    Y_AUTO = Y_MARY + MARY_H + d(0.4)
+    Y_AUTO = Y_MARY + MARY_H + d(0.5)
     Y_SEP1 = max(Y_AUTO + AUTO_H, BOX_Y + BOX_H) + d(1.0)
 
-    sub_chars  = len(ORDRE_SPACED)
-    SUB_X = max(MAR, (PW - sub_chars * SUB_W) // 2)
-    Y_SUB = Y_SEP1 + SEP + d(0.8)
+    # ── "O R D R E   D E   R E P A R A T I O N" centré ─────────
+    SPACED = "O R D R E   D E   R E P A R A T I O N"
+    sub_px = len(SPACED) * SUB_W
+    SUB_X  = max(MAR, (PW - sub_px) // 2)
+    Y_SUB  = Y_SEP1 + SEP + d(1.5)
 
-    Y_OR   = Y_SUB + SUB_H + d(1.5)
-    Y_SEP2 = Y_OR  + OR_H  + d(1.5)
+    # ── 6 chiffres OR — 1 par chiffre, répartis uniformément ────
+    avail  = PW - 2 * MAR
+    DIG_W  = avail // 7           # largeur par chiffre (7 unités : 6 chiffres + marges)
+    DIG_H  = round(DIG_W * 1.45)  # hauteur proportionnelle
+    GAP    = (avail - 6 * DIG_W) // 5
 
-    now    = datetime.datetime.now().strftime("%d/%m/%Y   %H:%M")
+    Y_DIG  = Y_SUB + SUB_H + d(2.0)
+
+    # ── Séparateur 2 ─────────────────────────────────────────────
+    Y_SEP2 = Y_DIG + DIG_H + d(2.0)
+
+    # ── Date centrée ─────────────────────────────────────────────
+    now    = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
     DATE_X = max(0, (PW - len(now) * DATE_W) // 2)
-    Y_DATE = Y_SEP2 + SEP + d(0.8)
+    Y_DATE = Y_SEP2 + SEP + d(1.0)
 
-    return "\n".join([
+    lines = [
         "^XA",
         f"^PW{PW}",
         f"^LL{LL}",
         "^LH0,0",
 
-        # MARY grand
+        # MARY + Automobiles (haut gauche)
         f"^FO{MAR},{Y_MARY}^A0N,{MARY_H},{MARY_W}^FDMARY^FS",
         f"^FO{MAR},{Y_AUTO}^A0N,{AUTO_H},{AUTO_W}^FDAutomobiles^FS",
 
-        # Cadre RC
+        # Cadre RC (haut droite)
         f"^FO{BOX_X},{BOX_Y}^GB{BOX_W},{BOX_H},{BOX_T}^FS",
         f"^FO{RC_TX},{RC_TY}^A0N,{RC_H},{RC_W}^FD{magasinier}^FS",
 
         # Séparateur 1
         f"^FO0,{Y_SEP1}^GB{PW},{SEP},{SEP}^FS",
 
-        # ORDRE DE REPARATION centré avec espacement
-        f"^FO{SUB_X},{Y_SUB}^A0N,{SUB_H},{SUB_W}^FD{ORDRE_SPACED}^FS",
+        # ORDRE DE REPARATION (lettres espacées)
+        f"^FO{SUB_X},{Y_SUB}^A0N,{SUB_H},{SUB_W}^FD{SPACED}^FS",
+    ]
 
-        # OR — 6 chiffres espacés, grande police, centré
-        f"^FO{OR_X},{Y_OR}^A0N,{OR_H},{OR_W}^FD{spaced_or}^FS",
+    # 6 chiffres, chacun positionné individuellement
+    x = MAR
+    for i, digit in enumerate(or_number):
+        lines.append(f"^FO{x},{Y_DIG}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
+        if i < 5:
+            x += DIG_W + GAP
 
+    lines += [
         # Séparateur 2
         f"^FO0,{Y_SEP2}^GB{PW},{SEP},{SEP}^FS",
 
@@ -162,7 +169,9 @@ def build_zpl(or_number: str, magasinier: str) -> str:
         f"^FO{DATE_X},{Y_DATE}^A0N,{DATE_H},{DATE_W}^FD{now}^FS",
 
         "^XZ",
-    ])
+    ]
+
+    return "\n".join(lines)
 
 # ── Printing ──────────────────────────────────────────────────────────────────
 
