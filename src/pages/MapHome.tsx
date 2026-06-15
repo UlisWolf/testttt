@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { MapContainer, TileLayer, Polyline, Marker, useMap, CircleMarker } from 'react-leaflet'
+import { useState, useEffect, useRef } from 'react'
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import SearchBar from '../components/SearchBar'
 import Speedometer from '../components/Speedometer'
@@ -40,40 +40,79 @@ const MODE_CONFIG: Record<RouteMode, { emoji: string; name: string; bg: string; 
   panoramique: { emoji: '🏛️', name: 'Panoramique', bg: 'bg-amber-500',   ring: 'ring-amber-400' },
 }
 
-// ── Arrow icon: rotates with GPS heading ──────────────────────────────────────
-function makeArrowIcon(heading: number, isMoving: boolean): L.DivIcon {
-  const deg = isMoving ? heading : 0
+// ── Arrow icon factory ────────────────────────────────────────────────────────
+// Called imperatively via setIcon() so Leaflet always renders the latest angle.
+function makeArrowIcon(deg: number): L.DivIcon {
   return L.divIcon({
-    html: `<div style="
-        width:52px;height:52px;
-        transform:rotate(${deg}deg);
-        transform-origin:center center;
-        transition:transform 0.4s ease;
-        filter:drop-shadow(0 3px 6px rgba(0,0,0,0.4));
-      ">
-      <svg viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- Outer glow -->
-        <circle cx="26" cy="26" r="22" fill="rgba(79,70,229,0.18)"/>
-        <!-- Arrow body: points up (north = 0°) -->
-        <path d="M26 8 L38 40 L26 33 L14 40 Z"
-          fill="#4f46e5"
-          stroke="white"
-          stroke-width="2.5"
-          stroke-linejoin="round"/>
-        <!-- Center dot -->
-        <circle cx="26" cy="26" r="3" fill="white" opacity="0.8"/>
+    html: `<div style="width:64px;height:64px;transform:rotate(${deg}deg);transform-origin:50% 50%;">
+      <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="32" cy="32" r="28" fill="rgba(79,70,229,0.15)"/>
+        <path d="M32 10 L46 50 L32 42 L18 50 Z"
+          fill="#4f46e5" stroke="white" stroke-width="3" stroke-linejoin="round"
+          style="filter:drop-shadow(0 2px 6px rgba(0,0,0,0.5))"/>
+        <circle cx="32" cy="32" r="4" fill="white" fill-opacity="0.9"/>
       </svg>
     </div>`,
-    iconSize: [52, 52],
-    iconAnchor: [26, 26],
+    iconSize: [64, 64],
+    iconAnchor: [32, 32],
     className: '',
   })
 }
 
+// ── Imperative user-position component ────────────────────────────────────────
+// Uses L.marker directly so setIcon() updates instantly without react-leaflet
+// reconciliation issues.
+function UserArrow({ position, heading, speed, accuracy }: {
+  position: [number, number]
+  heading: number
+  speed: number
+  accuracy: number
+}) {
+  const map = useMap()
+  const markerRef = useRef<L.Marker | null>(null)
+  const circleRef = useRef<L.Circle | null>(null)
+
+  useEffect(() => {
+    const deg = speed > 2 ? heading : (markerRef.current ? /* keep */
+      parseFloat((markerRef.current.getIcon() as L.DivIcon).options.html?.toString().match(/rotate\(([^d]+)deg\)/)?.[1] ?? '0')
+      : 0)
+
+    if (!markerRef.current) {
+      markerRef.current = L.marker(position, {
+        icon: makeArrowIcon(deg),
+        zIndexOffset: 1000,
+      }).addTo(map)
+    } else {
+      markerRef.current.setLatLng(position)
+      markerRef.current.setIcon(makeArrowIcon(deg))
+    }
+
+    if (accuracy > 5) {
+      if (!circleRef.current) {
+        circleRef.current = L.circle(position, {
+          radius: accuracy,
+          color: '#4f46e5', weight: 1, opacity: 0.4,
+          fillColor: '#4f46e5', fillOpacity: 0.06,
+        }).addTo(map)
+      } else {
+        circleRef.current.setLatLng(position)
+        circleRef.current.setRadius(accuracy)
+      }
+    }
+  }, [position, heading, speed, accuracy, map])
+
+  useEffect(() => () => {
+    markerRef.current?.remove()
+    circleRef.current?.remove()
+  }, [])
+
+  return null
+}
+
 const destIcon = L.divIcon({
-  html: `<div style="filter:drop-shadow(0 3px 8px rgba(0,0,0,0.4))">
-    <svg viewBox="0 0 36 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="48">
-      <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30s18-16.5 18-30C36 8.06 27.94 0 18 0z" fill="#ef4444"/>
+  html: `<div style="filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5))">
+    <svg width="36" height="48" viewBox="0 0 36 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M18 0C8.06 0 0 8.06 0 18c0 13.5 18 30 18 30S36 31.5 36 18C36 8.06 27.94 0 18 0z" fill="#ef4444"/>
       <circle cx="18" cy="18" r="7" fill="white"/>
     </svg>
   </div>`,
@@ -122,12 +161,6 @@ export default function MapHome() {
   const [follow, setFollow] = useState(true)
 
   const geo = useGeolocation(true)
-
-  // Rotating arrow — only rotates when moving (speed > 2 km/h)
-  const arrowIcon = useMemo(
-    () => makeArrowIcon(geo.heading ?? 0, (geo.speed ?? 0) > 2),
-    [geo.heading, geo.speed]
-  )
 
   // ── Route calculation ────────────────────────────────────────────────────
   useEffect(() => {
@@ -229,18 +262,12 @@ export default function MapHome() {
         )}
 
         {geo.position && (
-          <>
-            {/* Accuracy circle */}
-            {geo.accuracy > 0 && (
-              <CircleMarker
-                center={geo.position}
-                radius={Math.min(Math.max(geo.accuracy / 2, 12), 80)}
-                pathOptions={{ color: '#4f46e5', fillColor: '#4f46e5', fillOpacity: 0.07, weight: 1.5, opacity: 0.4 }}
-              />
-            )}
-            {/* Directional arrow */}
-            <Marker position={geo.position} icon={arrowIcon} />
-          </>
+          <UserArrow
+            position={geo.position}
+            heading={geo.heading ?? 0}
+            speed={geo.speed ?? 0}
+            accuracy={geo.accuracy ?? 0}
+          />
         )}
 
         <RecenterMap pos={geo.position} follow={(navigating || follow)} />
