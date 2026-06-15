@@ -64,35 +64,56 @@ log = logging.getLogger("apv")
 
 def build_zpl(or_number: str, qty: int, magasinier: str) -> str:
     """
-    105 mm × 53 mm @ 203 dpi  →  840 × 424 dots
-    Colonne gauche : OR (6 chiffres)    X=10..550   police 150×90
-    Colonne droite : QTÉ (1-3 chiffres) X=590..830  police 150×80
+    105 mm × 53 mm @ 203 dpi  =  840 × 424 dots
+    Utilise toute la hauteur (95 %) :
+
+      Y  0..30  barre bleue haut  (texte blanc inversé)
+      Y 32..34  séparateur
+      Y 36..56  sous-étiquettes  "ORDRE DE REPARATION" | "QTE"
+      Y 58..336 OR (hauteur 278) col gauche   X 10..564  (6×92=552)
+                QTE (hauteur 278) col droite  X 580..820 (3×80=240)
+      Y 338..340 séparateur
+      Y 342..372 magasinier + date  (28pt)
+      Y 374..404 barre bleue bas
+      ─────── total 404 / 424 dots ───────────────────────────────
     """
     now = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
     return "\n".join([
         "^XA",
-        "^PW840",          # 105 mm @ 203 dpi
-        "^LL424",          # 53 mm  @ 203 dpi
+        "^PW840",
+        "^LL424",
         "^LH0,0",
-        # ── Barre bleue du haut (0..32) ─────────────────────────────────────
-        "^FO0,0^GB840,32,32^FS",
-        "^FO12,4^A0N,26,26^FR^FDAPV ROUEN  Mary Automobiles^FS",
-        # ── Séparateur (34) ──────────────────────────────────────────────────
-        "^FO0,34^GB840,2,2^FS",
-        # ── Sous-étiquettes (38..58) ─────────────────────────────────────────
-        "^FO12,38^A0N,20,20^FDORDRE DE REPARATION^FS",
-        "^FO648,38^A0N,20,20^FDQTE^FS",
-        # ── OR (grande police, col gauche) 62..212 ───────────────────────────
-        f"^FO12,62^A0N,150,90^FD{or_number}^FS",
-        # ── QTÉ (grande police, col droite) 62..212 ─────────────────────────
-        f"^FO590,62^A0N,150,80^FD{qty}^FS",
-        # ── Séparateur (214) ─────────────────────────────────────────────────
-        "^FO0,214^GB840,2,2^FS",
-        # ── Pied : magasinier + date (218..248) ──────────────────────────────
-        f"^FO12,218^A0N,28,28^FDMagasinier : {magasinier}^FS",
-        f"^FO490,218^A0N,28,28^FD{now}^FS",
-        # ── Barre bleue du bas (252..282) ────────────────────────────────────
-        "^FO0,252^GB840,30,30^FS",
+
+        # Barre bleue haut (Y 0..30)
+        "^FO0,0^GB840,30,30^FS",
+        "^FO12,3^A0N,26,26^FR^FDAPV ROUEN  Mary Automobiles^FS",
+
+        # Séparateur (Y 32)
+        "^FO0,32^GB840,2,2^FS",
+
+        # Sous-étiquettes (Y 36)
+        "^FO12,36^A0N,20,20^FDORDRE DE REPARATION^FS",
+        "^FO648,36^A0N,20,20^FDQTE^FS",
+
+        # OR – col gauche, police 278×92 (Y 58..336)
+        f"^FO10,58^A0N,278,92^FD{or_number}^FS",
+
+        # Séparateur vertical entre les deux colonnes
+        "^FO574,34^GB2,302,2^FS",
+
+        # QTE – col droite, police 278×80 (Y 58..336)
+        f"^FO582,58^A0N,278,80^FD{qty}^FS",
+
+        # Séparateur (Y 338)
+        "^FO0,338^GB840,2,2^FS",
+
+        # Pied : magasinier + date (Y 342)
+        f"^FO12,342^A0N,28,28^FDMagasinier : {magasinier}^FS",
+        f"^FO490,342^A0N,28,28^FD{now}^FS",
+
+        # Barre bleue bas (Y 374..404)
+        "^FO0,374^GB840,30,30^FS",
+
         "^XZ",
     ])
 
