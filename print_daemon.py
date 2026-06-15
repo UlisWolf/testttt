@@ -66,7 +66,7 @@ def build_zpl(or_number: str, magasinier: str) -> str:
     # RC text — centered inside box via ^FB
     RC_H = d(9)
     RC_W = d(8)
-    # vertical centering inside box (accounting for border thickness)
+    # vertical centering: (BOX_H - RC_H) / 2
     RC_TEXT_Y = BOX_Y + BOX_T + (BOX_H - BOX_T - RC_H) // 2
 
     # ── Thick separator Y ───────────────────────────────────────
@@ -94,10 +94,10 @@ def build_zpl(or_number: str, magasinier: str) -> str:
     DATE_W = d(2.0)
     Y_DATE = Y_SEP2 + SEP2 + d(1.5)
 
-    # Sanity check — warn if layout overflows label height
+    # Sanity check
     date_bot = Y_DATE + DATE_H
     if date_bot > LL:
-        log.warning(f"ZPL layout overflow: date_bot={date_bot} > LL={LL} ({date_bot/dpm:.1f}mm > {LL/dpm:.0f}mm)")
+        log.warning(f"ZPL layout overflow: date_bot={date_bot} > LL={LL}")
 
     now_str = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
     digits  = or_number.ljust(6)
@@ -115,27 +115,27 @@ def build_zpl(or_number: str, magasinier: str) -> str:
         # ── Automobiles ──
         f"^FO{MAR},{Y_AUTO}^A0N,{AUTO_H},{AUTO_W}^FDAutomobiles^FS",
 
-        # ── RC box (border) ──
+        # ── RC box ──
         f"^FO{BOX_X},{BOX_Y}^GB{BOX_W},{BOX_H},{BOX_T}^FS",
 
         # ── RC text centered in box via ^FB ──
         f"^FO{BOX_X},{RC_TEXT_Y}^A0N,{RC_H},{RC_W}^FB{BOX_W},1,0,C^FD{magasinier}^FS",
 
-        # ── Thick separator line ──
+        # ── Thick separator ──
         f"^FO0,{Y_SEP1}^GB{PW},{SEP1},{SEP1}^FS",
 
-        # ── ORDRE DE REPARATION centered ──
+        # ── ORDRE DE REPARATION ──
         f"^FO0,{Y_SUB}^A0N,{SUB_H},{SUB_W}^FB{PW},1,0,C^FDORDRE DE REPARATION^FS",
     ]
 
-    # ── 6 digits individually positioned ──
+    # ── 6 digits individually ──
     x = MAR
     for digit in digits:
         lines.append(f"^FO{x},{Y_DIG}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
         x += DIG_W + GAP
 
     lines += [
-        # ── Thin separator line ──
+        # ── Thin separator ──
         f"^FO0,{Y_SEP2}^GB{PW},{SEP2},{SEP2}^FS",
 
         # ── Date centered ──
@@ -193,8 +193,8 @@ def fetch_pending(ws: gspread.Worksheet):
             continue
         status = row[COL_STATUS - 1].strip().upper()
         if status == "PENDING":
-            row_idx = i + 1   # 1-based
-            or_num  = row[COL_OR - 1].strip()
+            row_idx   = i + 1   # 1-based
+            or_num    = row[COL_OR - 1].strip()
             try:
                 copies = max(1, int(row[COL_QTY - 1].strip()))
             except (ValueError, IndexError):
@@ -252,7 +252,7 @@ def main() -> None:
 
         except gspread.exceptions.APIError as e:
             log.error(f"Google Sheets API error: {e}")
-            ws = None   # force reconnect on next cycle
+            ws = None   # force reconnect
         except Exception as e:
             log.error(f"Unexpected error: {e}")
             traceback.print_exc()
