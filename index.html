@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>APV Rouen – Impression étiquettes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #07080c;
+      --card:      #111318;
+      --gold:      #f5c518;
+      --green:     #16c784;
+      --red:       #f6465d;
+      --text:      #ffffff;
+      --secondary: #9ca3af;
+      --font:      -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+      --mono:      'SF Mono', 'Fira Code', monospace;
+      --r-card:    20px;
+      --r-btn:     14px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding-bottom: 32px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* ── HEADER ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 16px;
+      border-bottom: 1.5px solid rgba(245,197,24,0.25);
+    }
+
+    .header-left { display: flex; align-items: baseline; gap: 8px; }
+    .header-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: var(--text);
+    }
+
+    .header-right { display: flex; align-items: center; gap: 10px; }
+
+    .badge-rc {
+      background: rgba(245,197,24,0.12);
+      border: 1.5px solid rgba(245,197,24,0.5);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 3px 8px;
+      border-radius: 6px;
+    }
+
+    .gear-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      color: var(--secondary);
+      font-size: 18px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+    .gear-btn:hover { color: var(--gold); }
+
+    /* ── OR DISPLAY ── */
+    .or-display {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      padding: 4px 20px 0;
+    }
+
+    .or-cell {
+      width: 44px;
+      height: 54px;
+      background: var(--card);
+      border: 1.5px solid #1e2028;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text);
+      transition: border-color 0.15s;
+      position: relative;
+    }
+
+    .or-cell.empty { color: #2a2d38; }
+    .or-cell.cursor {
+      border-color: var(--gold);
+    }
+    .or-cell.cursor::after {
+      content: '';
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 18px;
+      height: 2px;
+      background: var(--gold);
+      border-radius: 1px;
+      animation: blink 1s ease-in-out infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0; }
+    }
+
+    /* ── LABEL PREVIEW ── */
+    .preview-wrap {
+      padding: 0 20px;
+    }
+
+    .label-preview {
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+      aspect-ratio: 105 / 53;
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #000;
+      position: relative;
+    }
+
+    .lp-header {
+      display: flex;
+      align-items: stretch;
+      flex: 0 0 25%;
+      padding: 5px 7px 4px 7px;
+      gap: 6px;
+    }
+
+    .lp-brand {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .lp-mary {
+      font-size: 15px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+
+    .lp-auto {
+      font-size: 7px;
+      color: #555;
+      letter-spacing: 0.3px;
+      margin-top: 1px;
+    }
+
+    .lp-rc-box {
+      border: 3px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      min-width: 38px;
+    }
+
+    .lp-rc-text {
+      font-size: 13px;
+      font-weight: 900;
+      color: #000;
+      letter-spacing: 1px;
+    }
+
+    .lp-sep-thick {
+      height: 3px;
+      background: #000;
+    }
+
+    .lp-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 7px 2px;
+      gap: 2px;
+    }
+
+    .lp-subtitle {
+      font-size: 5.5px;
+      letter-spacing: 3px;
+      color: #666;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .lp-or-number {
+      font-size: 26px;
+      font-weight: 700;
+      color: #000;
+      letter-spacing: 5px;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.1;
+    }
+
+    .lp-sep-thin {
+      height: 1px;
+      background: #ccc;
+      margin: 0;
+    }
+
+    .lp-footer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 7px 4px;
+    }
+
+    .lp-date {
+      font-family: var(--mono);
+      font-size: 6px;
+      color: #666;
+      letter-spacing: 1px;
+    }
+
+    /* ── COPIES ROW ── */
+    .copies-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 0 20px;
+    }
+
+    .qty-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      font-size: 22px;
+      font-weight: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none;
+    }
+
+    .qty-btn:active { transform: scale(0.92); }
+
+    .qty-btn.minus {
+      background: #1a1d24;
+      color: var(--secondary);
+    }
+    .qty-btn.minus:hover { background: #22262f; }
+
+    .qty-btn.plus {
+      background: rgba(245,197,24,0.12);
+      color: var(--gold);
+      border: 1.5px solid rgba(245,197,24,0.3);
+    }
+    .qty-btn.plus:hover { background: rgba(245,197,24,0.2); }
+
+    .qty-display {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 80px;
+    }
+
+    .qty-number {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .qty-label {
+      font-size: 11px;
+      color: var(--secondary);
+      margin-top: 2px;
+    }
+
+    /* ── NUMPAD ── */
+    .numpad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 0 20px;
+    }
+
+    .key {
+      aspect-ratio: 1;
+      min-height: 64px;
+      background: #151820;
+      border: 1.5px solid #1e2028;
+      border-radius: 14px;
+      color: var(--text);
+      font-size: 22px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.1s, border-color 0.1s, transform 0.08s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .key:active {
+      background: rgba(245,197,24,0.15);
+      border-color: rgba(245,197,24,0.5);
+      transform: scale(0.93);
+    }
+
+    .key.delete {
+      background: #1a1d24;
+      color: var(--secondary);
+    }
+
+    .key.empty-key {
+      background: transparent;
+      border-color: transparent;
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── SEND BUTTON ── */
+    .send-wrap { padding: 0 20px; }
+
+    .send-btn {
+      width: 100%;
+      height: 58px;
+      border-radius: var(--r-btn);
+      border: 2px solid transparent;
+      font-size: 16px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .send-btn.active {
+      background: #151820;
+      border-color: var(--gold);
+      color: var(--gold);
+    }
+
+    .send-btn.active:hover { background: rgba(245,197,24,0.08); }
+    .send-btn.active:active { transform: scale(0.98); }
+
+    .send-btn.disabled {
+      background: #0e1015;
+      border-color: #1e2028;
+      color: #3a3e4a;
+      cursor: not-allowed;
+    }
+
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(245,197,24,0.3);
+      border-top-color: var(--gold);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── HISTORY ── */
+    .history-section { padding: 0 20px; }
+
+    .history-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--secondary);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .history-empty {
+      color: #2a2d38;
+      font-size: 13px;
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    .history-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .history-item {
+      background: var(--card);
+      border: 1px solid #1e2028;
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: slideIn 0.2s ease;
+    }
+
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .history-or {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--text);
+      letter-spacing: 2px;
+      flex: 1;
+    }
+
+    .history-qty {
+      font-size: 12px;
+      color: var(--secondary);
+      background: #1a1d24;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .history-time {
+      font-size: 11px;
+      color: #4a4f60;
+      min-width: 48px;
+      text-align: right;
+    }
+
+    .history-del {
+      background: none;
+      border: none;
+      color: #3a3e4a;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      border-radius: 4px;
+      transition: color 0.15s;
+    }
+    .history-del:hover { color: var(--red); }
+
+    .clear-all-wrap { text-align: center; margin-top: 10px; }
+    .clear-all {
+      background: none;
+      border: none;
+      color: #3a3e4a;
+      font-size: 12px;
+      cursor: pointer;
+      text-decoration: underline;
+      font-family: var(--font);
+      transition: color 0.15s;
+    }
+    .clear-all:hover { color: var(--red); }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed;
+      bottom: -80px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1c2030;
+      border: 1.5px solid #2a2d38;
+      color: var(--text);
+      padding: 12px 20px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: bottom 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 1000;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    }
+
+    .toast.show { bottom: 32px; }
+    .toast.success { border-color: rgba(22,199,132,0.4); }
+    .toast.error   { border-color: rgba(246,70,93,0.4); }
+
+    /* ── CONFIG MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 900;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal-card {
+      background: var(--card);
+      border: 1px solid #1e2028;
+      border-radius: 20px 20px 0 0;
+      padding: 24px 20px 40px;
+      width: 100%;
+      max-width: 480px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+    }
+
+    .modal-overlay.open .modal-card {
+      transform: translateY(0);
+    }
+
+    .modal-handle {
+      width: 36px;
+      height: 4px;
+      background: #2a2d38;
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .modal-label {
+      font-size: 12px;
+      color: var(--secondary);
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .modal-input {
+      width: 100%;
+      background: #0e1015;
+      border: 1.5px solid #1e2028;
+      border-radius: 10px;
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .modal-input:focus { border-color: var(--gold); }
+
+    .modal-close {
+      width: 100%;
+      margin-top: 20px;
+      height: 48px;
+      border-radius: var(--r-btn);
+      border: 1.5px solid #1e2028;
+      background: #151820;
+      color: var(--secondary);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .modal-close:hover { background: #1e2028; color: var(--text); }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <span class="header-title">APV Rouen</span>
+    </div>
+    <div class="header-right">
+      <span class="badge-rc">RC</span>
+      <button class="gear-btn" id="gearBtn" title="Paramètres">⚙</button>
+    </div>
+  </header>
+
+  <!-- OR DISPLAY -->
+  <div class="or-display" id="orDisplay">
+    <div class="or-cell empty cursor" data-idx="0">·</div>
+    <div class="or-cell empty" data-idx="1">·</div>
+    <div class="or-cell empty" data-idx="2">·</div>
+    <div class="or-cell empty" data-idx="3">·</div>
+    <div class="or-cell empty" data-idx="4">·</div>
+    <div class="or-cell empty" data-idx="5">·</div>
+  </div>
+
+  <!-- LABEL PREVIEW -->
+  <div class="preview-wrap">
+    <div class="label-preview">
+      <div class="lp-header">
+        <div class="lp-brand">
+          <div class="lp-mary">MARY</div>
+          <div class="lp-auto">Automobiles</div>
+        </div>
+        <div class="lp-rc-box">
+          <span class="lp-rc-text">RC</span>
+        </div>
+      </div>
+      <div class="lp-sep-thick"></div>
+      <div class="lp-body">
+        <div class="lp-subtitle">Ordre de Réparation</div>
+        <div class="lp-or-number" id="prevOR">· · · · · ·</div>
+      </div>
+      <div class="lp-sep-thin"></div>
+      <div class="lp-footer">
+        <span class="lp-date" id="prevDate"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- COPIES ROW -->
+  <div class="copies-row">
+    <button class="qty-btn minus" id="qtyMinus">−</button>
+    <div class="qty-display">
+      <span class="qty-number" id="qtyNum">1</span>
+      <span class="qty-label" id="qtyLabel">étiquette(s)</span>
+    </div>
+    <button class="qty-btn plus" id="qtyPlus">+</button>
+  </div>
+
+  <!-- NUMPAD -->
+  <div class="numpad" id="numpad">
+    <button class="key" data-digit="1">1</button>
+    <button class="key" data-digit="2">2</button>
+    <button class="key" data-digit="3">3</button>
+    <button class="key" data-digit="4">4</button>
+    <button class="key" data-digit="5">5</button>
+    <button class="key" data-digit="6">6</button>
+    <button class="key" data-digit="7">7</button>
+    <button class="key" data-digit="8">8</button>
+    <button class="key" data-digit="9">9</button>
+    <button class="key empty-key" aria-hidden="true"></button>
+    <button class="key" data-digit="0">0</button>
+    <button class="key delete" id="delKey">←</button>
+  </div>
+
+  <!-- SEND BUTTON -->
+  <div class="send-wrap">
+    <button class="send-btn disabled" id="sendBtn" disabled>
+      <div class="spinner" id="spinner"></div>
+      <span id="sendLabel">Encore 6 chiffre(s)</span>
+    </button>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="history-section">
+    <div class="history-title">Historique</div>
+    <div id="historyContainer">
+      <div class="history-empty" id="historyEmpty">Aucun OR imprimé</div>
+      <div class="history-list" id="historyList"></div>
+      <div class="clear-all-wrap" id="clearAllWrap" style="display:none">
+        <button class="clear-all" id="clearAll">Effacer tout</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- CONFIG MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-card">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙ Paramètres</div>
+    <label class="modal-label" for="urlInput">URL Apps Script</label>
+    <input class="modal-input" id="urlInput" type="text" spellcheck="false" />
+    <button class="modal-close" id="modalClose">Fermer</button>
+  </div>
+</div>
+
+<script>
+  // ── STATE ──
+  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbza-arjDM1G-bkWUtM3eqKSMQquQRkYEtxitpS4n2f-SQn7CtHXQDQbJY0mlFI7_9vkgA/exec';
+  const LS_HISTORY = 'apv_history';
+  const LS_URL     = 'apv_script_url';
+  const MAX_HIST   = 15;
+
+  let orStr = '';
+  let qty   = 1;
+
+  // ── UTILS ──
+  function nowFR() {
+    const d = new Date();
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${dd}/${mm}/${yy}  ${hh}:${mi}`;
+  }
+
+  function relativeTime(ts) {
+    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
+    if (diff < 60)   return diff + 's';
+    if (diff < 3600) return Math.floor(diff / 60) + 'min';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return Math.floor(diff / 86400) + 'j';
+  }
+
+  function getScriptUrl() {
+    return localStorage.getItem(LS_URL) || DEFAULT_URL;
+  }
+
+  // ── RENDER ──
+  function render() {
+    // OR cells
+    const cells = document.querySelectorAll('.or-cell');
+    cells.forEach((cell, i) => {
+      if (i < orStr.length) {
+        cell.textContent = orStr[i];
+        cell.classList.remove('empty', 'cursor');
+      } else if (i === orStr.length && orStr.length < 6) {
+        cell.textContent = '·';
+        cell.classList.add('empty', 'cursor');
+      } else {
+        cell.textContent = '·';
+        cell.classList.add('empty');
+        cell.classList.remove('cursor');
+      }
+    });
+
+    // Label preview
+    const prevOR   = document.getElementById('prevOR');
+    const prevDate = document.getElementById('prevDate');
+
+    if (orStr.length === 0) {
+      prevOR.textContent = '· · · · · ·';
+    } else {
+      // Pad to 6 with dots, show as spaced digits
+      let display = '';
+      for (let i = 0; i < 6; i++) {
+        display += (i < orStr.length ? orStr[i] : '·');
+        if (i < 5) display += ' ';
+      }
+      prevOR.textContent = display;
+    }
+    prevDate.textContent = nowFR();
+
+    // Copies
+    document.getElementById('qtyNum').textContent   = qty;
+    document.getElementById('qtyLabel').textContent = qty > 1 ? 'étiquettes' : 'étiquette';
+
+    // Send button
+    const btn       = document.getElementById('sendBtn');
+    const lbl       = document.getElementById('sendLabel');
+    const remaining = 6 - orStr.length;
+
+    if (orStr.length === 6) {
+      btn.classList.replace('disabled', 'active');
+      btn.disabled = false;
+      lbl.textContent = `🖨 Imprimer OR ${orStr} × ${qty}`;
+    } else {
+      btn.classList.replace('active', 'disabled');
+      btn.disabled = true;
+      lbl.textContent = `Encore ${remaining} chiffre(s)`;
+    }
+  }
+
+  // ── HISTORY ──
+  function loadHistory() {
+    try { return JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); }
+    catch { return []; }
+  }
+
+  function saveHistory(hist) {
+    localStorage.setItem(LS_HISTORY, JSON.stringify(hist));
+  }
+
+  function addHistory(or, qty, ts) {
+    let hist = loadHistory();
+    hist.unshift({ or, qty, ts });
+    if (hist.length > MAX_HIST) hist = hist.slice(0, MAX_HIST);
+    saveHistory(hist);
+  }
+
+  function renderHistory() {
+    const hist    = loadHistory();
+    const empty   = document.getElementById('historyEmpty');
+    const list    = document.getElementById('historyList');
+    const clearW  = document.getElementById('clearAllWrap');
+
+    list.innerHTML = '';
+
+    if (hist.length === 0) {
+      empty.style.display = 'block';
+      clearW.style.display = 'none';
+      return;
+    }
+
+    empty.style.display = 'none';
+    clearW.style.display = 'block';
+
+    hist.forEach((entry, idx) => {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <span class="history-or">${entry.or}</span>
+        <span class="history-qty">×${entry.qty}</span>
+        <span class="history-time">${relativeTime(entry.ts)}</span>
+        <button class="history-del" data-idx="${idx}" title="Supprimer">×</button>
+      `;
+      list.appendChild(item);
+    });
+
+    // Refresh relative times every 30s
+    list.querySelectorAll('.history-del').forEach(btn => {
+      btn.addEventListener('click', e => {
+        const i = parseInt(e.currentTarget.dataset.idx);
+        const h = loadHistory();
+        h.splice(i, 1);
+        saveHistory(h);
+        renderHistory();
+      });
+    });
+  }
+
+  document.getElementById('clearAll').addEventListener('click', () => {
+    saveHistory([]);
+    renderHistory();
+  });
+
+  // ── TOAST ──
+  let toastTimer = null;
+  function showToast(msg, type = 'success') {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = `toast ${type} show`;
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.className = `toast ${type}`; }, 3000);
+  }
+
+  // ── SEND ──
+  async function send() {
+    if (orStr.length !== 6) return;
+
+    const btn     = document.getElementById('sendBtn');
+    const lbl     = document.getElementById('sendLabel');
+    const spinner = document.getElementById('spinner');
+    const snapshotOR  = orStr;
+    const snapshotQty = qty;
+    const ts = new Date().toISOString();
+
+    btn.disabled = true;
+    spinner.style.display = 'block';
+    lbl.textContent = 'Envoi en cours…';
+
+    const url = getScriptUrl();
+    const params = new URLSearchParams({
+      or: snapshotOR,
+      qty: snapshotQty,
+      magasinier: 'RC',
+      ts: ts
+    });
+
+    try {
+      await fetch(`${url}?${params.toString()}`, { method: 'GET', mode: 'no-cors' });
+      // no-cors always "succeeds"
+      addHistory(snapshotOR, snapshotQty, ts);
+      orStr = '';
+      render();
+      renderHistory();
+      showToast(`✓ Envoyé — OR ${snapshotOR} × ${snapshotQty} copies`, 'success');
+    } catch (err) {
+      showToast('✗ Erreur réseau', 'error');
+    } finally {
+      spinner.style.display = 'none';
+      render(); // re-enables or disables button correctly
+    }
+  }
+
+  // ── NUMPAD ──
+  document.getElementById('numpad').addEventListener('click', e => {
+    const key = e.target.closest('.key');
+    if (!key || key.classList.contains('empty-key')) return;
+
+    if (key.id === 'delKey') {
+      if (orStr.length > 0) orStr = orStr.slice(0, -1);
+    } else {
+      const digit = key.dataset.digit;
+      if (digit !== undefined && orStr.length < 6) orStr += digit;
+    }
+    render();
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', e => {
+    if (e.target.classList.contains('modal-input')) return;
+    if (/^[0-9]$/.test(e.key)) {
+      if (orStr.length < 6) orStr += e.key;
+      render();
+    } else if (e.key === 'Backspace') {
+      if (orStr.length > 0) orStr = orStr.slice(0, -1);
+      render();
+    } else if (e.key === 'Enter') {
+      send();
+    }
+  });
+
+  // ── SEND BUTTON ──
+  document.getElementById('sendBtn').addEventListener('click', send);
+
+  // ── QTY ──
+  document.getElementById('qtyMinus').addEventListener('click', () => {
+    if (qty > 1) { qty--; render(); }
+  });
+  document.getElementById('qtyPlus').addEventListener('click', () => {
+    if (qty < 99) { qty++; render(); }
+  });
+
+  // ── CONFIG MODAL ──
+  const modal     = document.getElementById('modalOverlay');
+  const urlInput  = document.getElementById('urlInput');
+
+  document.getElementById('gearBtn').addEventListener('click', () => {
+    urlInput.value = getScriptUrl();
+    modal.classList.add('open');
+  });
+
+  document.getElementById('modalClose').addEventListener('click', () => {
+    const v = urlInput.value.trim();
+    if (v) localStorage.setItem(LS_URL, v);
+    modal.classList.remove('open');
+  });
+
+  modal.addEventListener('click', e => {
+    if (e.target === modal) {
+      const v = urlInput.value.trim();
+      if (v) localStorage.setItem(LS_URL, v);
+      modal.classList.remove('open');
+    }
+  });
+
+  // ── INIT ──
+  setInterval(renderHistory, 30000);
+  render();
+  renderHistory();
+
+  // Keep date updated in preview
+  setInterval(() => {
+    document.getElementById('prevDate').textContent = nowFR();
+  }, 10000);
+</script>
+</body>
+</html>
