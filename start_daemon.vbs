@@ -17,6 +17,6 @@ oShell.Environment("PROCESS")("POLL_INTERVAL")     = "5"
 oShell.Environment("PROCESS")("LABEL_DPI")         = "203"
 
 ' ── LANCEMENT EN ARRIERE-PLAN ─────────────────────────────────────────────────
-oShell.Run "py """ & sDir & "\print_daemon.py""", 0, False
+oShell.Run "pythonw """ & sDir & "\print_daemon.py""", 0, False
 
 Set oShell = Nothing
