@@ -1,6 +1,6 @@
 """
 APV Rouen – Print Daemon
-Polls the Google Sheet every 5 s, prints PENDING jobs on Godex DT4x (105×53 mm),
+Polls the Google Sheet every 5 s, prints PENDING jobs on Godex DT4x (53×105 mm),
 then marks them PRINTED.
 
 Requirements:
@@ -18,8 +18,6 @@ Sheet columns (row 1 = header):
 LABEL_DPI:
     Godex DT4x 203 dpi -> set LABEL_DPI=203 (default)
     Godex DT4x 300 dpi -> set LABEL_DPI=300
-    To check: Panneau de configuration -> Imprimantes -> clic droit Godex
-              -> Proprietes d'impression -> onglet Graphiques -> Resolution
 """
 
 import os
@@ -65,63 +63,75 @@ logging.basicConfig(
 )
 log = logging.getLogger("apv")
 
-# ── ZPL PAYSAGE 105×53 mm — Godex DT4x ───────────────────────────────────────
+# ── ZPL PORTRAIT 53×105 mm — Godex DT4x ──────────────────────────────────────
 #
-#   ^PW = 105 mm  ^LL = 53 mm   (^FB utilisé pour centrage précis)
+#   ^PW = 53 mm  (largeur du rouleau)
+#   ^LL = 105 mm (longueur d'avance papier)
 #
-#   ┌─ MARY ──────────────────────────────────────┬────────────┐
-#   │  Automobiles                                │     RC     │  ≈13 mm
-#   ├──────────────── LIGNE ÉPAISSE ──────────────┴────────────┤
-#   │      O R D R E   D E   R E P A R A T I O N              │  ≈4 mm
-#   │   3       0       6       5       4       8              │  ≈21 mm
-#   ├──────────────────── ligne fine ──────────────────────────┤
-#   │               15/06/2026   11:49                         │  ≈5 mm
-#   └──────────────────────────────────────────────────────────┘
+#   ┌──────────── 53 mm ────────────┐
+#   │ MARY          ┌─────────────┐ │
+#   │ Automobiles   │     RC      │ │  ≈14 mm
+#   ├───────────────┴─────────────┤
+#   │  ORDRE DE REPARATION        │  ≈ 5 mm
+#   │                             │
+#   │    3      0      6          │  ≈20 mm
+#   │                             │
+#   │    5      4      8          │  ≈20 mm
+#   │                             │
+#   ├─────────────────────────────┤
+#   │    15/06/2026   11:49       │  ≈ 5 mm
+#   └─────────────────────────────┘
+#                           105 mm
 
 def build_zpl(or_number: str, magasinier: str) -> str:
     dpm = LABEL_DPI / 25.4
     def d(mm): return round(mm * dpm)
 
-    PW   = d(105)
-    LL   = d(53)
-    MAR  = d(2.5)
-    SEP1 = max(5, d(1.0))   # ligne épaisse sous header
-    SEP2 = max(2, d(0.3))   # ligne fine au-dessus footer
+    PW   = d(53)    # largeur rouleau
+    LL   = d(105)   # longueur étiquette
+    MAR  = d(2.0)
+    SEP1 = max(4, d(0.8))
+    SEP2 = max(2, d(0.3))
 
     # ── MARY + Automobiles ───────────────────────────────────────
-    MARY_H = d(9.0);  MARY_W = d(9.0)   # carré → gras maximal
-    AUTO_H = d(3.0);  AUTO_W = d(2.5)
-    Y_MARY = d(0.8)
+    MARY_H = d(7.5);  MARY_W = d(7.5)
+    AUTO_H = d(2.8);  AUTO_W = d(2.2)
+    Y_MARY = d(1.5)
     Y_AUTO = Y_MARY + MARY_H + d(0.5)
 
     # ── Cadre RC (haut droite) ───────────────────────────────────
-    BOX_H  = d(13);   BOX_W  = d(25);   BOX_T = max(5, d(1.0))
-    BOX_X  = PW - BOX_W - MAR
-    BOX_Y  = d(0.5)
-    RC_H   = d(9.0);  RC_W = d(8.0)
-    RC_TY  = BOX_Y + (BOX_H - RC_H) // 2
+    BOX_W = d(16);  BOX_H = d(11);  BOX_T = max(4, d(0.8))
+    BOX_X = PW - BOX_W - MAR
+    BOX_Y = d(1.0)
+    RC_H  = d(7.0);  RC_W = d(6.0)
+    RC_TY = BOX_Y + (BOX_H - RC_H) // 2
 
     # ── Séparateur 1 ─────────────────────────────────────────────
-    Y_SEP1 = max(Y_AUTO + AUTO_H, BOX_Y + BOX_H) + d(0.5)
+    Y_SEP1 = max(Y_AUTO + AUTO_H, BOX_Y + BOX_H) + d(1.0)
 
-    # ── "ORDRE DE REPARATION" — centré via ^FB ───────────────────
-    SUB_H  = d(2.6);  SUB_W = d(1.9)
-    Y_SUB  = Y_SEP1 + SEP1 + d(1.2)
+    # ── ORDRE DE REPARATION — centré via ^FB ─────────────────────
+    SUB_H = d(2.4);  SUB_W = d(1.7)
+    Y_SUB = Y_SEP1 + SEP1 + d(1.5)
 
-    # ── 6 chiffres OR — répartis uniformément ────────────────────
+    # ── 2 rangées de 3 chiffres ──────────────────────────────────
     avail = PW - 2 * MAR
-    DIG_W = avail // 7
-    DIG_H = round(DIG_W * 1.55)
-    GAP   = (avail - 6 * DIG_W) // 5
-    Y_DIG = Y_SUB + SUB_H + d(1.5)
+    DIG_W = avail // 4          # 3 chiffres + marges inter = 4 unités
+    DIG_H = round(DIG_W * 2.5)  # haut pour remplir l'étiquette
+    GAP   = (avail - 3 * DIG_W) // 2
+
+    Y_DIG1 = Y_SUB + SUB_H + d(4.0)
+    Y_DIG2 = Y_DIG1 + DIG_H + d(5.0)
 
     # ── Séparateur 2 ─────────────────────────────────────────────
-    Y_SEP2 = Y_DIG + DIG_H + d(1.5)
+    Y_SEP2 = Y_DIG2 + DIG_H + d(4.0)
 
     # ── Date — centrée via ^FB ────────────────────────────────────
-    DATE_H = d(2.8);  DATE_W = d(2.0)
+    DATE_H = d(2.8);  DATE_W = d(1.9)
     now    = datetime.datetime.now().strftime("%d/%m/%Y   %H:%M")
-    Y_DATE = Y_SEP2 + SEP2 + d(1.0)
+    Y_DATE = Y_SEP2 + SEP2 + d(2.5)
+
+    half1 = or_number[:3]
+    half2 = or_number[3:]
 
     lines = [
         "^XA",
@@ -129,33 +139,38 @@ def build_zpl(or_number: str, magasinier: str) -> str:
         f"^LL{LL}",
         "^LH0,0",
 
-        # MARY gras + Automobiles (haut gauche)
+        # MARY + Automobiles
         f"^FO{MAR},{Y_MARY}^A0N,{MARY_H},{MARY_W}^FDMARY^FS",
         f"^FO{MAR},{Y_AUTO}^A0N,{AUTO_H},{AUTO_W}^FDAutomobiles^FS",
 
-        # Cadre RC + "RC" centré dans le cadre via ^FB
+        # Cadre RC + texte centré via ^FB
         f"^FO{BOX_X},{BOX_Y}^GB{BOX_W},{BOX_H},{BOX_T}^FS",
         f"^FO{BOX_X},{RC_TY}^A0N,{RC_H},{RC_W}^FB{BOX_W},1,0,C^FD{magasinier}^FS",
 
         # Ligne épaisse
         f"^FO0,{Y_SEP1}^GB{PW},{SEP1},{SEP1}^FS",
 
-        # "ORDRE DE REPARATION" centré via ^FB
-        f"^FO0,{Y_SUB}^A0N,{SUB_H},{SUB_W}^FB{PW},1,0,C^FDO R D R E   D E   R E P A R A T I O N^FS",
+        # ORDRE DE REPARATION centré
+        f"^FO0,{Y_SUB}^A0N,{SUB_H},{SUB_W}^FB{PW},1,0,C^FDORDRE DE REPARATION^FS",
     ]
 
-    # 6 chiffres positionnés individuellement
+    # Rangée 1 : 3 premiers chiffres
     x = MAR
-    for i, digit in enumerate(or_number):
-        lines.append(f"^FO{x},{Y_DIG}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
-        if i < 5:
-            x += DIG_W + GAP
+    for digit in half1:
+        lines.append(f"^FO{x},{Y_DIG1}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
+        x += DIG_W + GAP
+
+    # Rangée 2 : 3 derniers chiffres
+    x = MAR
+    for digit in half2:
+        lines.append(f"^FO{x},{Y_DIG2}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
+        x += DIG_W + GAP
 
     lines += [
         # Ligne fine
         f"^FO0,{Y_SEP2}^GB{PW},{SEP2},{SEP2}^FS",
 
-        # Date centrée via ^FB
+        # Date centrée
         f"^FO0,{Y_DATE}^A0N,{DATE_H},{DATE_W}^FB{PW},1,0,C^FD{now}^FS",
 
         "^XZ",
