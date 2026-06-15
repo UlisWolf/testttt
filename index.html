@@ -527,12 +527,8 @@ async function send() {
   if (!cfg.url) { openCfg(); return; }
   setLoad(true);
   try {
-    await fetch(cfg.url, {
-      method: "POST",
-      headers: {"Content-Type":"application/json"},
-      body: JSON.stringify({ or: orStr, qty, timestamp: new Date().toISOString() }),
-      mode: "no-cors"
-    });
+    const _p = new URLSearchParams({ or: orStr, qty, magasinier: "RC", ts: new Date().toISOString() });
+    await fetch(cfg.url + "?" + _p, { method: "GET", mode: "no-cors" });
     hist.unshift({ or: orStr, qty, ts: nowFR() });
     if (hist.length > 15) hist.pop();
     localStorage.setItem(HIST_KEY, JSON.stringify(hist));
