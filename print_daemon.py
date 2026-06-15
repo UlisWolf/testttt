@@ -63,32 +63,38 @@ log = logging.getLogger("apv")
 # ── ZPL label template (Godex DT4x, 105×53 mm @ 203 dpi = 840×424 dots) ────
 
 def build_zpl(or_number: str, qty: int, magasinier: str) -> str:
+    """
+    105 mm × 53 mm @ 203 dpi  →  840 × 424 dots
+    Colonne gauche : OR (6 chiffres)    X=10..550   police 150×90
+    Colonne droite : QTÉ (1-3 chiffres) X=590..830  police 150×80
+    """
     now = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
-    return (
-        "^XA\n"
-        "^PW840\n"           # Label width  (840 dots = 105 mm)
-        "^LL424\n"           # Label length (424 dots =  53 mm)
-        "^CI28\n"            # UTF-8
-        # Top colour bar (blue)
-        "^FO0,0^GB840,18,18,B^FS\n"
-        # Title
-        "^FO20,22^A0N,26,26^FDAPV ROUEN – Mary Automobiles^FS\n"
-        # Separator
-        "^FO0,52^GB840,2,2^FS\n"
-        # OR number (large)
-        "^FO20,64^A0N,22,22^FDORDRE DE RÉPARATION^FS\n"
-        f"^FO20,92^A0N,72,72^FD{or_number}^FS\n"
-        # Quantity
-        "^FO580,92^A0N,34,34^FDQTÉ^FS\n"
-        f"^FO580,132^A0N,62,62^FD{qty}^FS\n"
-        # Bottom row
-        "^FO0,188^GB840,2,2^FS\n"
-        f"^FO20,196^A0N,26,26^FDMagasinier : {magasinier}^FS\n"
-        f"^FO440,196^A0N,26,26^FD{now}^FS\n"
-        # Bottom bar (red)
-        "^FO0,236^GB840,18,18,B^FS\n"
-        "^XZ\n"
-    )
+    return "\n".join([
+        "^XA",
+        "^PW840",          # 105 mm @ 203 dpi
+        "^LL424",          # 53 mm  @ 203 dpi
+        "^LH0,0",
+        # ── Barre bleue du haut (0..32) ─────────────────────────────────────
+        "^FO0,0^GB840,32,32^FS",
+        "^FO12,4^A0N,26,26^FR^FDAPV ROUEN  Mary Automobiles^FS",
+        # ── Séparateur (34) ──────────────────────────────────────────────────
+        "^FO0,34^GB840,2,2^FS",
+        # ── Sous-étiquettes (38..58) ─────────────────────────────────────────
+        "^FO12,38^A0N,20,20^FDORDRE DE REPARATION^FS",
+        "^FO648,38^A0N,20,20^FDQTE^FS",
+        # ── OR (grande police, col gauche) 62..212 ───────────────────────────
+        f"^FO12,62^A0N,150,90^FD{or_number}^FS",
+        # ── QTÉ (grande police, col droite) 62..212 ─────────────────────────
+        f"^FO590,62^A0N,150,80^FD{qty}^FS",
+        # ── Séparateur (214) ─────────────────────────────────────────────────
+        "^FO0,214^GB840,2,2^FS",
+        # ── Pied : magasinier + date (218..248) ──────────────────────────────
+        f"^FO12,218^A0N,28,28^FDMagasinier : {magasinier}^FS",
+        f"^FO490,218^A0N,28,28^FD{now}^FS",
+        # ── Barre bleue du bas (252..282) ────────────────────────────────────
+        "^FO0,252^GB840,30,30^FS",
+        "^XZ",
+    ])
 
 # ── Printing ──────────────────────────────────────────────────────────────────
 
