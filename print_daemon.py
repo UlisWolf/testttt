@@ -67,75 +67,61 @@ log = logging.getLogger("apv")
 
 # ── ZPL PAYSAGE 105×53 mm — Godex DT4x ───────────────────────────────────────
 #
-#   ^PW = 105 mm  ^LL = 53 mm
+#   ^PW = 105 mm  ^LL = 53 mm   (^FB utilisé pour centrage précis)
 #
-#   ╔══ MARY  ════════════════════════════════════════╦══════════╗
-#   ║   Automobiles                                   ║    RC    ║  ~13 mm
-#   ╠═════════════════ ligne épaisse ═════════════════╩══════════╣
-#   ║         O R D R E   D E   R E P A R A T I O N             ║  ~5 mm
-#   ║                                                            ║
-#   ║       3       0       6       5       4       8            ║  ~20 mm
-#   ║                                                            ║
-#   ╠──────────────────── ligne fine ────────────────────────────╣
-#   ║               15/06/2026   11:49                           ║  ~5 mm
-#   ╚════════════════════════════════════════════════════════════╝
-#                                                          53 mm
+#   ┌─ MARY ──────────────────────────────────────┬────────────┐
+#   │  Automobiles                                │     RC     │  ≈13 mm
+#   ├──────────────── LIGNE ÉPAISSE ──────────────┴────────────┤
+#   │      O R D R E   D E   R E P A R A T I O N              │  ≈4 mm
+#   │   3       0       6       5       4       8              │  ≈21 mm
+#   ├──────────────────── ligne fine ──────────────────────────┤
+#   │               15/06/2026   11:49                         │  ≈5 mm
+#   └──────────────────────────────────────────────────────────┘
 
 def build_zpl(or_number: str, magasinier: str) -> str:
     dpm = LABEL_DPI / 25.4
-
     def d(mm): return round(mm * dpm)
 
-    PW  = d(105)   # largeur
-    LL  = d(53)    # hauteur
-    MAR = d(2.5)   # marge gauche/droite
+    PW   = d(105)
+    LL   = d(53)
+    MAR  = d(2.5)
+    SEP1 = max(5, d(1.0))   # ligne épaisse sous header
+    SEP2 = max(2, d(0.3))   # ligne fine au-dessus footer
 
-    SEP1 = max(4, d(0.8))   # ligne épaisse sous le header
-    SEP2 = max(2, d(0.25))  # ligne fine au-dessus du footer
-
-    # ── MARY + Automobiles (haut gauche) ─────────────────────────
-    MARY_H = d(8.5);  MARY_W = d(8.5)   # carré = gras maximal
-    AUTO_H = d(3.0);  AUTO_W = d(2.3)
-    Y_MARY = d(1.0)
-    Y_AUTO = Y_MARY + MARY_H + d(0.6)
+    # ── MARY + Automobiles ───────────────────────────────────────
+    MARY_H = d(9.0);  MARY_W = d(9.0)   # carré → gras maximal
+    AUTO_H = d(3.0);  AUTO_W = d(2.5)
+    Y_MARY = d(0.8)
+    Y_AUTO = Y_MARY + MARY_H + d(0.5)
 
     # ── Cadre RC (haut droite) ───────────────────────────────────
-    RC_H  = d(8.0);  RC_W = d(7.0)
-    BOX_W = d(22);   BOX_H = d(13);  BOX_T = max(5, d(0.9))
-    BOX_X = PW - BOX_W - MAR
-    BOX_Y = d(0.5)
-    RC_TX = BOX_X + (BOX_W - 2 * RC_W) // 2
-    RC_TY = BOX_Y + (BOX_H - RC_H)     // 2
+    BOX_H  = d(13);   BOX_W  = d(25);   BOX_T = max(5, d(1.0))
+    BOX_X  = PW - BOX_W - MAR
+    BOX_Y  = d(0.5)
+    RC_H   = d(9.0);  RC_W = d(8.0)
+    RC_TY  = BOX_Y + (BOX_H - RC_H) // 2
 
-    # ── Séparateur 1 (épais) ─────────────────────────────────────
-    HEADER_BOT = max(Y_AUTO + AUTO_H, BOX_Y + BOX_H) + d(0.8)
-    Y_SEP1 = HEADER_BOT
+    # ── Séparateur 1 ─────────────────────────────────────────────
+    Y_SEP1 = max(Y_AUTO + AUTO_H, BOX_Y + BOX_H) + d(0.5)
 
-    # ── "O R D R E   D E   R E P A R A T I O N" ─────────────────
-    SPACED = "O R D R E   D E   R E P A R A T I O N"
-    SUB_H  = d(2.4);  SUB_W = d(1.7)
-    # Estimation largeur : nb chars × largeur de cellule
-    sub_est = len(SPACED) * SUB_W
-    SUB_X   = max(MAR, (PW - sub_est) // 2)
-    Y_SUB   = Y_SEP1 + SEP1 + d(1.8)
+    # ── "ORDRE DE REPARATION" — centré via ^FB ───────────────────
+    SUB_H  = d(2.6);  SUB_W = d(1.9)
+    Y_SUB  = Y_SEP1 + SEP1 + d(1.2)
 
-    # ── 6 chiffres — répartis sur toute la largeur utile ─────────
+    # ── 6 chiffres OR — répartis uniformément ────────────────────
     avail = PW - 2 * MAR
-    DIG_W = avail // 7           # 6 chiffres + marges inter = 7 unités
-    DIG_H = round(DIG_W * 1.50)  # proportionnel
+    DIG_W = avail // 7
+    DIG_H = round(DIG_W * 1.55)
     GAP   = (avail - 6 * DIG_W) // 5
+    Y_DIG = Y_SUB + SUB_H + d(1.5)
 
-    Y_DIG = Y_SUB + SUB_H + d(1.8)
+    # ── Séparateur 2 ─────────────────────────────────────────────
+    Y_SEP2 = Y_DIG + DIG_H + d(1.5)
 
-    # ── Séparateur 2 (fin) ────────────────────────────────────────
-    Y_SEP2 = Y_DIG + DIG_H + d(1.8)
-
-    # ── Date centrée ─────────────────────────────────────────────
+    # ── Date — centrée via ^FB ────────────────────────────────────
     DATE_H = d(2.8);  DATE_W = d(2.0)
     now    = datetime.datetime.now().strftime("%d/%m/%Y   %H:%M")
-    date_est = len(now) * DATE_W
-    DATE_X   = max(0, (PW - date_est) // 2)
-    Y_DATE   = Y_SEP2 + SEP2 + d(1.0)
+    Y_DATE = Y_SEP2 + SEP2 + d(1.0)
 
     lines = [
         "^XA",
@@ -143,22 +129,22 @@ def build_zpl(or_number: str, magasinier: str) -> str:
         f"^LL{LL}",
         "^LH0,0",
 
-        # MARY (gras) + Automobiles
+        # MARY gras + Automobiles (haut gauche)
         f"^FO{MAR},{Y_MARY}^A0N,{MARY_H},{MARY_W}^FDMARY^FS",
         f"^FO{MAR},{Y_AUTO}^A0N,{AUTO_H},{AUTO_W}^FDAutomobiles^FS",
 
-        # Cadre RC épais
+        # Cadre RC + "RC" centré dans le cadre via ^FB
         f"^FO{BOX_X},{BOX_Y}^GB{BOX_W},{BOX_H},{BOX_T}^FS",
-        f"^FO{RC_TX},{RC_TY}^A0N,{RC_H},{RC_W}^FD{magasinier}^FS",
+        f"^FO{BOX_X},{RC_TY}^A0N,{RC_H},{RC_W}^FB{BOX_W},1,0,C^FD{magasinier}^FS",
 
-        # Séparateur 1 — épais
+        # Ligne épaisse
         f"^FO0,{Y_SEP1}^GB{PW},{SEP1},{SEP1}^FS",
 
-        # ORDRE DE REPARATION — lettres espacées, centré
-        f"^FO{SUB_X},{Y_SUB}^A0N,{SUB_H},{SUB_W}^FD{SPACED}^FS",
+        # "ORDRE DE REPARATION" centré via ^FB
+        f"^FO0,{Y_SUB}^A0N,{SUB_H},{SUB_W}^FB{PW},1,0,C^FDO R D R E   D E   R E P A R A T I O N^FS",
     ]
 
-    # 6 chiffres positionnés un par un
+    # 6 chiffres positionnés individuellement
     x = MAR
     for i, digit in enumerate(or_number):
         lines.append(f"^FO{x},{Y_DIG}^A0N,{DIG_H},{DIG_W}^FD{digit}^FS")
@@ -166,11 +152,11 @@ def build_zpl(or_number: str, magasinier: str) -> str:
             x += DIG_W + GAP
 
     lines += [
-        # Séparateur 2 — fin
+        # Ligne fine
         f"^FO0,{Y_SEP2}^GB{PW},{SEP2},{SEP2}^FS",
 
-        # Date centrée
-        f"^FO{DATE_X},{Y_DATE}^A0N,{DATE_H},{DATE_W}^FD{now}^FS",
+        # Date centrée via ^FB
+        f"^FO0,{Y_DATE}^A0N,{DATE_H},{DATE_W}^FB{PW},1,0,C^FD{now}^FS",
 
         "^XZ",
     ]
