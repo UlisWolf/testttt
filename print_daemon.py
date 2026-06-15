@@ -8,13 +8,18 @@ Requirements:
 
 Setup:
     1. Create a Google Cloud service account and download the JSON key.
-    2. Share the Google Sheet with the service account e-mail (Viewer is enough
-       for reading; Editor is required so the daemon can update the Status column).
-    3. Set CREDENTIALS_FILE and SPREADSHEET_ID below (or via environment variables).
+    2. Share the Google Sheet with the service account e-mail (Editor role).
+    3. Set env variables in start_daemon.vbs (SPREADSHEET_ID, LABEL_DPI, etc.)
 
 Sheet columns (row 1 = header):
     A: Timestamp  B: OR  C: Quantité  D: Magasinier  E: Statut
-    Status values: PENDING → PRINTING → PRINTED | ERROR
+    Statut lifecycle: PENDING -> PRINTING -> PRINTED | ERROR
+
+LABEL_DPI:
+    Godex DT4x 203 dpi -> set LABEL_DPI=203 (default)
+    Godex DT4x 300 dpi -> set LABEL_DPI=300
+    To check: Panneau de configuration -> Imprimantes -> clic droit Godex
+              -> Proprietes d'impression -> onglet Graphiques -> Resolution
 """
 
 import os
@@ -27,15 +32,15 @@ import traceback
 import gspread
 from google.oauth2.service_account import Credentials
 
-# ── Configuration ────────────────────────────────────────────────────────────
+# ── Configuration ─────────────────────────────────────────────────────────────
 
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS", "service_account.json")
-SPREADSHEET_ID   = os.getenv("SPREADSHEET_ID", "")   # Sheet ID from the URL
+SPREADSHEET_ID   = os.getenv("SPREADSHEET_ID", "")
 WORKSHEET_NAME   = os.getenv("WORKSHEET_NAME", "Queue")
-PRINTER_NAME     = os.getenv("PRINTER_NAME", "")     # Leave blank for default printer
+PRINTER_NAME     = os.getenv("PRINTER_NAME", "")
 POLL_INTERVAL    = int(os.getenv("POLL_INTERVAL", "5"))
+LABEL_DPI        = int(os.getenv("LABEL_DPI", "203"))
 
-# Column indices (1-based)
 COL_TIMESTAMP  = 1
 COL_OR         = 2
 COL_QTY        = 3
@@ -60,90 +65,111 @@ logging.basicConfig(
 )
 log = logging.getLogger("apv")
 
-# ── ZPL label template (Godex DT4x, 105×53 mm @ 203 dpi = 840×424 dots) ────
+# ── ZPL label (105 × 53 mm, DPI-aware) ───────────────────────────────────────
+#
+#  Layout (all sizes calculated from mm so it scales at 203 or 300 dpi):
+#
+#   ┌──────────────────────────────────────────────┐
+#   │ ██ APV ROUEN  Mary Automobiles  ██ (3mm bar)│
+#   ├──────────────────────────────────────────────┤
+#   │ ORDRE DE REPARATION          15/06 11:15    │ 3mm
+#   ├──────────────────────────────────────────────┤
+#   │                                              │
+#   │         1  2  3  4  5  6   (OR, 32mm high) │
+#   │                                              │
+#   ├──────────────────────────────────────────────┤
+#   │ Magasinier : RC                              │ 3.5mm
+#   │ ██████████████████████████████  (3mm bar)  │
+#   └──────────────────────────────────────────────┘
+#   Total: ~47mm / 53mm used (89%)
 
-def build_zpl(or_number: str, qty: int, magasinier: str) -> str:
-    """
-    105 mm × 53 mm @ 203 dpi  =  840 × 424 dots
-    Utilise toute la hauteur (95 %) :
+def build_zpl(or_number: str, magasinier: str) -> str:
+    dpm = LABEL_DPI / 25.4          # dots per mm
 
-      Y  0..30  barre bleue haut  (texte blanc inversé)
-      Y 32..34  séparateur
-      Y 36..56  sous-étiquettes  "ORDRE DE REPARATION" | "QTE"
-      Y 58..336 OR (hauteur 278) col gauche   X 10..564  (6×92=552)
-                QTE (hauteur 278) col droite  X 580..820 (3×80=240)
-      Y 338..340 séparateur
-      Y 342..372 magasinier + date  (28pt)
-      Y 374..404 barre bleue bas
-      ─────── total 404 / 424 dots ───────────────────────────────
-    """
+    def d(mm): return round(mm * dpm)
+
+    PW = d(105)                     # label width
+    LL = d(53)                      # label height
+
+    # Vertical layout (mm from top)
+    BAR_H   = d(3.5)                # blue bar height
+    HDR_Y   = d(0.4)                # header text Y inside bar
+    SEP1    = BAR_H + d(0.3)        # first separator Y
+    SUB_Y   = SEP1 + d(0.6)        # sub-label "ORDRE DE REPARATION"
+    SUB_H   = d(2.8)                # sub-label font height
+    OR_Y    = SUB_Y + SUB_H + d(1) # OR number starts here
+    OR_H    = d(31)                 # OR font height  (fills most of label)
+    OR_W    = min(d(13.5), (PW - d(2)) // 6)  # width per char, max 6 fit
+    SEP2    = OR_Y + OR_H + d(1)   # second separator
+    FOOT_Y  = SEP2 + d(0.8)        # footer text
+    FOOT_H  = d(3.2)               # footer font height
+    BAR2_Y  = FOOT_Y + FOOT_H + d(1)  # bottom bar
+
     now = datetime.datetime.now().strftime("%d/%m/%Y  %H:%M")
-    return "\n".join([
+
+    lines = [
         "^XA",
-        "^PW840",
-        "^LL424",
+        f"^PW{PW}",
+        f"^LL{LL}",
         "^LH0,0",
 
-        # Barre bleue haut (Y 0..30)
-        "^FO0,0^GB840,30,30^FS",
-        "^FO12,3^A0N,26,26^FR^FDAPV ROUEN  Mary Automobiles^FS",
+        # Top blue bar + white title
+        f"^FO0,0^GB{PW},{BAR_H},{BAR_H}^FS",
+        f"^FO{d(1.5)},{HDR_Y}^A0N,{BAR_H - d(0.8)},{BAR_H - d(0.8)}^FR^FDAPV ROUEN  Mary Automobiles^FS",
 
-        # Séparateur (Y 32)
-        "^FO0,32^GB840,2,2^FS",
+        # Separator
+        f"^FO0,{SEP1}^GB{PW},{d(0.25)},{d(0.25)}^FS",
 
-        # Sous-étiquettes (Y 36)
-        "^FO12,36^A0N,20,20^FDORDRE DE REPARATION^FS",
-        "^FO648,36^A0N,20,20^FDQTE^FS",
+        # Sub-label left + date right
+        f"^FO{d(1.5)},{SUB_Y}^A0N,{SUB_H},{SUB_H}^FDORDRE DE REPARATION^FS",
+        f"^FO{PW - d(35)},{SUB_Y}^A0N,{SUB_H},{SUB_H}^FD{now}^FS",
 
-        # OR – col gauche, police 278×92 (Y 58..336)
-        f"^FO10,58^A0N,278,92^FD{or_number}^FS",
+        # OR number – big, full width
+        f"^FO{d(1.5)},{OR_Y}^A0N,{OR_H},{OR_W}^FD{or_number}^FS",
 
-        # Séparateur vertical entre les deux colonnes
-        "^FO574,34^GB2,302,2^FS",
+        # Separator
+        f"^FO0,{SEP2}^GB{PW},{d(0.25)},{d(0.25)}^FS",
 
-        # QTE – col droite, police 278×80 (Y 58..336)
-        f"^FO582,58^A0N,278,80^FD{qty}^FS",
+        # Footer
+        f"^FO{d(1.5)},{FOOT_Y}^A0N,{FOOT_H},{FOOT_H}^FDMagasinier : {magasinier}^FS",
 
-        # Séparateur (Y 338)
-        "^FO0,338^GB840,2,2^FS",
-
-        # Pied : magasinier + date (Y 342)
-        f"^FO12,342^A0N,28,28^FDMagasinier : {magasinier}^FS",
-        f"^FO490,342^A0N,28,28^FD{now}^FS",
-
-        # Barre bleue bas (Y 374..404)
-        "^FO0,374^GB840,30,30^FS",
+        # Bottom blue bar
+        f"^FO0,{BAR2_Y}^GB{PW},{BAR_H},{BAR_H}^FS",
 
         "^XZ",
-    ])
+    ]
+    return "\n".join(lines)
 
 # ── Printing ──────────────────────────────────────────────────────────────────
 
-def print_label(or_number: str, qty: int, magasinier: str) -> None:
-    zpl = build_zpl(or_number, qty, magasinier)
+def print_copies(or_number: str, copies: int, magasinier: str) -> None:
+    """Print `copies` identical labels for this OR number."""
+    zpl = build_zpl(or_number, magasinier)
     raw = zpl.encode("utf-8")
 
     try:
         import win32print
     except ImportError:
-        log.warning("win32print not available – writing label to console (dev mode)")
-        log.info("--- ZPL LABEL ---\n%s--- END ---", zpl)
+        log.warning("win32print not available – dev mode, printing to console")
+        log.info("--- ZPL (%d cop.) ---\n%s\n--- END ---", copies, zpl)
         return
 
     printer = PRINTER_NAME or win32print.GetDefaultPrinter()
-    log.info("Sending to printer: %s", printer)
+    log.info("Printer: %s  copies: %d", printer, copies)
 
     hPrinter = win32print.OpenPrinter(printer)
     try:
-        hJob = win32print.StartDocPrinter(hPrinter, 1, ("APV Label", None, "RAW"))
-        win32print.StartPagePrinter(hPrinter)
-        win32print.WritePrinter(hPrinter, raw)
-        win32print.EndPagePrinter(hPrinter)
-        win32print.EndDocPrinter(hPrinter)
+        for n in range(copies):
+            hJob = win32print.StartDocPrinter(hPrinter, 1, (f"APV-{or_number}-{n+1}", None, "RAW"))
+            win32print.StartPagePrinter(hPrinter)
+            win32print.WritePrinter(hPrinter, raw)
+            win32print.EndPagePrinter(hPrinter)
+            win32print.EndDocPrinter(hPrinter)
+            log.info("  copy %d/%d sent", n + 1, copies)
     finally:
         win32print.ClosePrinter(hPrinter)
 
-    log.info("Printed OR=%s qty=%s", or_number, qty)
+    log.info("Done OR=%s  %d copies", or_number, copies)
 
 # ── Google Sheets helpers ──────────────────────────────────────────────────────
 
@@ -154,15 +180,14 @@ def connect() -> gspread.Worksheet:
     return sh.worksheet(WORKSHEET_NAME)
 
 def fetch_pending(ws: gspread.Worksheet):
-    """Return list of (row_index, or, qty, magasinier) for PENDING rows."""
     records = ws.get_all_values()
     pending = []
-    for i, row in enumerate(records[1:], start=2):  # skip header
+    for i, row in enumerate(records[1:], start=2):
         if len(row) >= COL_STATUS and row[COL_STATUS - 1].strip().upper() == "PENDING":
-            or_num = row[COL_OR - 1].strip()
-            qty    = row[COL_QTY - 1].strip()
-            mag    = row[COL_MAGASINIER - 1].strip() if len(row) >= COL_MAGASINIER else "RC"
-            pending.append((i, or_num, qty or "1", mag))
+            or_num  = row[COL_OR - 1].strip()
+            copies  = row[COL_QTY - 1].strip()
+            mag     = row[COL_MAGASINIER - 1].strip() if len(row) >= COL_MAGASINIER else "RC"
+            pending.append((i, or_num, int(copies or "1"), mag))
     return pending
 
 def set_status(ws: gspread.Worksheet, row: int, status: str) -> None:
@@ -172,10 +197,10 @@ def set_status(ws: gspread.Worksheet, row: int, status: str) -> None:
 
 def main() -> None:
     if not SPREADSHEET_ID:
-        log.error("SPREADSHEET_ID is not set. Export it as an env variable or edit this file.")
+        log.error("SPREADSHEET_ID not set.")
         sys.exit(1)
 
-    log.info("APV Rouen print daemon starting (poll every %ds)", POLL_INTERVAL)
+    log.info("APV Rouen daemon starting — DPI=%d  poll=%ds", LABEL_DPI, POLL_INTERVAL)
 
     ws = None
     while True:
@@ -185,24 +210,21 @@ def main() -> None:
                 log.info("Connected to sheet: %s", WORKSHEET_NAME)
 
             jobs = fetch_pending(ws)
-            if jobs:
-                log.info("%d job(s) in queue", len(jobs))
-
-            for row_idx, or_num, qty, mag in jobs:
-                log.info("Processing row %d  OR=%s  qty=%s  mag=%s", row_idx, or_num, qty, mag)
+            for row_idx, or_num, copies, mag in jobs:
+                log.info("Job  OR=%s  copies=%d  mag=%s", or_num, copies, mag)
                 set_status(ws, row_idx, "PRINTING")
                 try:
-                    print_label(or_num, int(qty), mag)
+                    print_copies(or_num, copies, mag)
                     set_status(ws, row_idx, "PRINTED")
                 except Exception as e:
-                    log.error("Print failed for OR=%s: %s", or_num, e)
+                    log.error("Print error OR=%s: %s", or_num, e)
                     set_status(ws, row_idx, "ERROR")
 
         except gspread.exceptions.APIError as e:
-            log.warning("Sheets API error: %s – reconnecting next cycle", e)
+            log.warning("Sheets API error: %s", e)
             ws = None
         except Exception:
-            log.error("Unexpected error:\n%s", traceback.format_exc())
+            log.error("Unexpected:\n%s", traceback.format_exc())
             ws = None
 
         time.sleep(POLL_INTERVAL)
