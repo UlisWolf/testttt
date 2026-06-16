@@ -3,778 +3,453 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>APV Rouen – Impression étiquettes</title>
+<title>APV Rouen — Étiquettes</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-  :root {
-    --bg: #07080c;
-    --card: #111318;
-    --gold: #f5c518;
-    --green: #16c784;
-    --red: #f6465d;
-    --text: #ffffff;
-    --muted: #9ca3af;
-    --r-card: 20px;
-    --r-btn: 14px;
-    --font: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
-    --mono: 'SF Mono', 'Fira Code', monospace;
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --bg:#07080c; --surf:#0d0f16; --card:#11141d;
+    --bord:#1c2030; --bord2:#252a3a;
+    --gold:#f5c518; --ga:rgba(245,197,24,.12);
+    --green:#16c784; --red:#f6465d;
+    --text:#eef0f6; --dim:#9ca3af; --muted:#4a5168;
+    --font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --mono:'Courier New',monospace;
+    --r:18px;
+  }
+  html,body{height:100%;}
+  body{
+    background:var(--bg);color:var(--text);font-family:var(--font);
+    min-height:100dvh;display:flex;flex-direction:column;align-items:center;
+    padding-bottom:54px;
   }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: var(--font);
-    min-height: 100dvh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-bottom: 40px;
+  /* ── HEADER APP ── */
+  .hdr{
+    width:100%;max-width:480px;display:flex;align-items:center;
+    justify-content:space-between;padding:16px 16px 14px;
+    border-bottom:1px solid var(--bord);
+  }
+  .hdr-logo{height:54px;width:auto;display:block;}
+  .hdr-right{display:flex;align-items:center;gap:10px;}
+  .badge-rc{
+    background:var(--ga);border:1.5px solid var(--gold);color:var(--gold);
+    font-size:11px;font-weight:800;padding:4px 10px;border-radius:7px;letter-spacing:1.5px;
+  }
+  .gear{
+    background:var(--card);border:1px solid var(--bord);color:var(--muted);
+    cursor:pointer;font-size:16px;width:36px;height:36px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    transition:color .2s,border-color .2s;
+  }
+  .gear:hover{color:var(--gold);border-color:var(--gold);}
+
+  /* ── APP ── */
+  .app{width:100%;max-width:480px;padding:14px;display:flex;flex-direction:column;gap:11px;}
+
+  /* ── OR CELLS ── */
+  .or-wrap{
+    background:var(--card);border:1px solid var(--bord);border-radius:var(--r);
+    padding:14px 12px;display:flex;gap:6px;justify-content:center;
+  }
+  .or-cell{
+    flex:1;max-width:54px;height:62px;background:var(--surf);
+    border-radius:12px;border:1.5px solid var(--bord);
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;font-weight:800;font-family:var(--mono);
+    color:var(--text);position:relative;transition:border-color .15s,background .15s;
+  }
+  .or-cell.empty{color:rgba(156,163,175,.22);font-size:20px;}
+  .or-cell.active{border-color:var(--gold);box-shadow:0 0 0 3px rgba(245,197,24,.1);}
+  .or-cell.active::after{
+    content:'';position:absolute;bottom:9px;width:14px;height:2px;
+    background:var(--gold);border-radius:1px;animation:blink 1s step-end infinite;
+  }
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+  /* ════════════════════════════════════════
+     ÉTIQUETTE — réplique fidèle du ZPL imprimé
+     298×150px = 105×53mm @ 72dpi
+  ════════════════════════════════════════ */
+  .preview-card{
+    background:var(--card);border:1px solid var(--bord);border-radius:var(--r);
+    padding:16px 14px;display:flex;flex-direction:column;align-items:center;gap:11px;
+  }
+  .preview-chip{
+    align-self:flex-start;font-size:9px;font-weight:700;letter-spacing:1.4px;
+    text-transform:uppercase;color:var(--muted);
+  }
+  .label{
+    width:298px;height:150px;background:#fff;color:#000;
+    border-radius:5px;overflow:hidden;
+    box-shadow:0 2px 5px rgba(0,0,0,.15),0 10px 30px rgba(0,0,0,.5);
+    display:flex;flex-direction:column;
+    font-family:'Arial Black',Arial,Helvetica,sans-serif;
+  }
+  /* bandeau : 37px (=13mm) */
+  .lb-hdr{
+    height:37px;flex-shrink:0;display:flex;align-items:center;
+    justify-content:space-between;padding:0 8px;
+  }
+  .lb-logo{height:30px;width:auto;display:block;}
+  .lb-rc{
+    min-width:40px;height:28px;padding:0 4px;border:2.5px solid #000;border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:14px;font-weight:900;letter-spacing:.5px;
+    font-family:'Arial Black',Arial,sans-serif;flex-shrink:0;
+  }
+  /* trait épais (=8 dots ≈ 3px) */
+  .lb-sep-h{height:3px;background:#000;flex-shrink:0;}
+  /* corps OR centré */
+  .lb-body{
+    flex:1;display:flex;align-items:center;justify-content:center;
+    overflow:hidden;padding:0 6px;
+  }
+  .lb-or{
+    font-family:'Arial Black',Arial,sans-serif;font-weight:900;
+    color:#000;line-height:1;white-space:nowrap;text-align:center;
+  }
+  .lb-or.ph{color:#dcdcdc;font-size:24px;letter-spacing:6px;}
+  /* trait fin (=3 dots ≈ 1.5px) */
+  .lb-sep-f{height:1.5px;background:#000;flex-shrink:0;}
+  /* pied : reste de l'espace */
+  .lb-ftr{
+    height:26px;flex-shrink:0;display:flex;align-items:center;
+    justify-content:space-between;padding:0 8px;
+  }
+  .lb-ordre{
+    font-size:6px;font-weight:700;color:#000;letter-spacing:1.8px;
+    text-transform:uppercase;font-family:Arial,sans-serif;
+  }
+  .lb-date{
+    font-size:7.5px;color:#000;font-weight:700;
+    font-family:'Courier New',monospace;letter-spacing:.2px;
   }
 
-  .app {
-    width: 100%;
-    max-width: 480px;
-    padding: 0 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
+  /* ── COPIES ── */
+  .copies{
+    display:flex;align-items:center;gap:14px;background:var(--card);
+    border:1px solid var(--bord);border-radius:var(--r);padding:12px 16px;
   }
+  .qty-btn{
+    width:50px;height:50px;border-radius:13px;border:none;
+    font-size:26px;font-weight:600;cursor:pointer;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .1s;-webkit-tap-highlight-color:transparent;
+  }
+  .qty-btn:active{transform:scale(.88);}
+  .qty-m{background:rgba(255,255,255,.07);color:var(--text);}
+  .qty-p{background:var(--ga);color:var(--gold);border:1px solid rgba(245,197,24,.3);}
+  .qty-c{flex:1;text-align:center;}
+  .qty-n{font-size:36px;font-weight:800;line-height:1;}
+  .qty-l{font-size:11px;color:var(--muted);margin-top:3px;}
 
-  /* ── Header ── */
-  header {
-    width: 100%;
-    max-width: 480px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 16px 16px 14px;
-    border-bottom: 1.5px solid rgba(245,197,24,0.25);
+  /* ── NUMPAD ── */
+  .numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+  .nk{
+    min-height:60px;background:var(--card);border:1px solid var(--bord);
+    border-radius:14px;color:var(--text);font-size:22px;font-weight:600;
+    font-family:var(--font);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    user-select:none;-webkit-tap-highlight-color:transparent;
+    transition:background .08s,transform .08s;
   }
-  .header-left { display: flex; align-items: baseline; gap: 8px; }
-  .header-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .header-sub { font-size: 12px; color: var(--muted); }
-  .header-right { display: flex; align-items: center; gap: 10px; }
-  .badge-rc {
-    background: rgba(245,197,24,0.12);
-    border: 1.5px solid var(--gold);
-    color: var(--gold);
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 8px;
-    border-radius: 6px;
-    letter-spacing: 1px;
-  }
-  .gear-btn {
-    background: none;
-    border: none;
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 18px;
-    padding: 4px;
-    border-radius: 8px;
-    transition: color 0.2s;
-    line-height: 1;
-  }
-  .gear-btn:hover { color: var(--gold); }
+  .nk:active,.nk.hit{background:rgba(245,197,24,.14);transform:scale(.94);}
+  .nk.del{font-size:19px;color:var(--dim);}
+  .nk.ghost{background:transparent;border-color:transparent;pointer-events:none;}
 
-  /* ── OR Display ── */
-  .or-display {
-    display: flex;
-    gap: 8px;
-    justify-content: center;
-    padding: 4px 0;
+  /* ── SEND ── */
+  .send{
+    width:100%;height:60px;border-radius:16px;border:none;
+    font-size:16px;font-weight:700;font-family:var(--font);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    transition:all .18s;letter-spacing:.3px;-webkit-tap-highlight-color:transparent;
   }
-  .or-cell {
-    width: 48px;
-    height: 58px;
-    background: var(--card);
-    border-radius: 12px;
-    border: 1.5px solid rgba(255,255,255,0.08);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 26px;
-    font-weight: 700;
-    color: var(--text);
-    position: relative;
-    transition: border-color 0.2s;
+  .send.ready{background:var(--gold);color:#000;box-shadow:0 4px 22px rgba(245,197,24,.4);}
+  .send.ready:active{transform:scale(.97);box-shadow:none;}
+  .send.off{background:var(--card);border:1px solid var(--bord);color:var(--muted);cursor:not-allowed;}
+  .send.busy{background:var(--ga);border:1px solid var(--gold);color:var(--gold);cursor:not-allowed;}
+  .spin{
+    width:18px;height:18px;border:2.5px solid rgba(245,197,24,.3);
+    border-top-color:var(--gold);border-radius:50%;animation:rot .7s linear infinite;
   }
-  .or-cell.empty { color: rgba(156,163,175,0.4); font-size: 20px; }
-  .or-cell.active {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 2px rgba(245,197,24,0.15);
-  }
-  .or-cell.active::after {
-    content: '';
-    position: absolute;
-    bottom: 8px;
-    width: 18px;
-    height: 2px;
-    background: var(--gold);
-    border-radius: 1px;
-    animation: blink 1s step-end infinite;
-  }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  @keyframes rot{to{transform:rotate(360deg)}}
 
-  /* ── Label Preview ── */
-  .preview-wrap {
-    background: var(--card);
-    border-radius: var(--r-card);
-    padding: 16px;
-    display: flex;
-    justify-content: center;
+  /* ── HISTORY ── */
+  .hist-wrap{display:flex;flex-direction:column;gap:8px;}
+  .hist-hdr{display:flex;align-items:center;justify-content:space-between;}
+  .hist-ttl{font-size:9px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);}
+  .clr-all{background:none;border:none;color:var(--red);font-size:11px;cursor:pointer;font-family:var(--font);}
+  .hist-list{display:flex;flex-direction:column;gap:5px;}
+  .hi{
+    background:var(--card);border:1px solid var(--bord);border-radius:12px;
+    padding:11px 14px;display:flex;align-items:center;gap:11px;
   }
-  .label-preview {
-    width: 210px;
-    height: 106px;
-    background: #fff;
-    border-radius: 6px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.5);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    font-family: var(--font);
-    color: #000;
-    position: relative;
-  }
-  .lp-header {
-    display: flex;
-    align-items: stretch;
-    height: 28px;
-    flex-shrink: 0;
-  }
-  .lp-brand {
-    flex: 1;
-    padding: 3px 6px 2px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-  }
-  .lp-mary { font-size: 11px; font-weight: 900; line-height: 1; color: #000; }
-  .lp-auto { font-size: 7px; color: #444; line-height: 1; margin-top: 1px; }
-  .lp-rc-box {
-    width: 38px;
-    border: 2.5px solid #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 2px 4px 2px 0;
-    font-size: 10px;
-    font-weight: 900;
-    border-radius: 2px;
-  }
-  .lp-sep-thick {
-    height: 3px;
-    background: #000;
-    flex-shrink: 0;
-  }
-  .lp-body {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 3px 6px 2px;
-    gap: 3px;
-  }
-  .lp-ordre {
-    font-size: 5.5px;
-    letter-spacing: 2px;
-    color: #666;
-    text-transform: uppercase;
-    font-weight: 500;
-  }
-  .lp-digits {
-    font-size: 26px;
-    font-weight: 900;
-    letter-spacing: 5px;
-    color: #000;
-    font-family: var(--mono);
-    line-height: 1;
-    min-height: 31px;
-    display: flex;
-    align-items: center;
-  }
-  .lp-sep-thin {
-    height: 1px;
-    background: #ccc;
-    flex-shrink: 0;
-    margin: 0 6px;
-  }
-  .lp-footer {
-    height: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-  }
-  .lp-date {
-    font-size: 7px;
-    font-family: var(--mono);
-    color: #555;
-    letter-spacing: 0.5px;
-  }
+  .hi-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
+  .hi-or{font-family:var(--mono);font-size:16px;font-weight:700;flex:1;letter-spacing:2px;}
+  .hi-qty{font-size:12px;color:var(--dim);background:rgba(255,255,255,.05);padding:2px 9px;border-radius:6px;}
+  .hi-t{font-size:11px;color:var(--muted);min-width:38px;text-align:right;}
+  .hi-del{background:none;border:none;color:rgba(255,255,255,.18);font-size:17px;cursor:pointer;padding:0 0 0 4px;transition:color .15s;font-family:var(--font);}
+  .hi-del:hover{color:var(--red);}
+  .hist-empty{text-align:center;color:var(--muted);font-size:13px;padding:18px 0;}
 
-  /* ── Copies ── */
-  .copies-row {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: var(--card);
-    border-radius: var(--r-card);
-    padding: 14px 20px;
+  /* ── TOAST ── */
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(90px);
+    background:#181c28;border:1px solid rgba(255,255,255,.1);color:var(--text);
+    padding:13px 22px;border-radius:14px;font-size:13px;font-weight:600;
+    white-space:nowrap;z-index:1000;
+    transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+    box-shadow:0 8px 32px rgba(0,0,0,.55);
   }
-  .qty-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
-    border: none;
-    font-size: 22px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.1s, opacity 0.2s;
-    flex-shrink: 0;
-  }
-  .qty-btn:active { transform: scale(0.9); }
-  .qty-minus { background: rgba(255,255,255,0.08); color: var(--text); }
-  .qty-plus  { background: rgba(245,197,24,0.18); color: var(--gold); }
-  .qty-center {
-    flex: 1;
-    text-align: center;
-  }
-  .qty-num {
-    font-size: 32px;
-    font-weight: 700;
-    line-height: 1;
-    color: var(--text);
-  }
-  .qty-label {
-    font-size: 11px;
-    color: var(--muted);
-    margin-top: 2px;
-  }
+  .toast.show{transform:translateX(-50%) translateY(0);}
+  .toast.ok{border-color:var(--green);}
+  .toast.err{border-color:var(--red);}
 
-  /* ── Numpad ── */
-  .numpad {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
+  /* ── MODAL ── */
+  .overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);
+    z-index:500;display:none;align-items:flex-end;justify-content:center;
   }
-  .num-key {
-    min-height: 64px;
-    background: var(--card);
-    border: none;
-    border-radius: var(--r-btn);
-    color: var(--text);
-    font-size: 24px;
-    font-weight: 600;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: background 0.1s, transform 0.1s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
+  .overlay.open{display:flex;}
+  .modal{
+    background:#181b26;border-radius:24px 24px 0 0;border-top:1px solid var(--bord);
+    padding:22px 20px 44px;width:100%;max-width:480px;
+    animation:up .28s cubic-bezier(.34,1.56,.64,1);
   }
-  .num-key:active, .num-key.pressed {
-    background: rgba(245,197,24,0.18);
-    transform: scale(0.95);
+  @keyframes up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .m-title{font-size:16px;font-weight:700;margin-bottom:16px;}
+  .m-lbl{font-size:11px;color:var(--muted);margin-bottom:6px;display:block;}
+  .m-in{
+    width:100%;background:rgba(255,255,255,.06);border:1px solid var(--bord);
+    border-radius:10px;color:var(--text);font-size:11px;font-family:var(--mono);
+    padding:11px 12px;margin-bottom:16px;outline:none;word-break:break-all;
   }
-  .num-key.del { font-size: 20px; }
-  .num-key.empty-key { background: transparent; pointer-events: none; }
-
-  /* ── Send Button ── */
-  .send-btn {
-    width: 100%;
-    height: 60px;
-    border-radius: var(--r-btn);
-    border: 2px solid transparent;
-    font-size: 17px;
-    font-weight: 700;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    letter-spacing: 0.2px;
-  }
-  .send-btn.ready {
-    background: rgba(245,197,24,0.1);
-    border-color: var(--gold);
-    color: var(--gold);
-  }
-  .send-btn.ready:active { transform: scale(0.98); }
-  .send-btn.disabled {
-    background: rgba(255,255,255,0.04);
-    border-color: rgba(255,255,255,0.1);
-    color: var(--muted);
-    cursor: not-allowed;
-  }
-  .send-btn.loading {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-  .spinner {
-    width: 18px; height: 18px;
-    border: 2.5px solid rgba(245,197,24,0.3);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.7s linear infinite;
-    flex-shrink: 0;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  /* ── History ── */
-  .history-section { padding-bottom: 8px; }
-  .history-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 10px;
-  }
-  .history-title { font-size: 13px; font-weight: 600; color: var(--muted); letter-spacing: 0.5px; text-transform: uppercase; }
-  .clear-all {
-    background: none;
-    border: none;
-    color: var(--red);
-    font-size: 12px;
-    cursor: pointer;
-    font-family: var(--font);
-    padding: 2px 6px;
-  }
-  .history-list { display: flex; flex-direction: column; gap: 6px; }
-  .history-item {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 10px 14px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-  .hist-or {
-    font-weight: 700;
-    font-size: 16px;
-    font-family: var(--mono);
-    flex: 1;
-  }
-  .hist-qty {
-    font-size: 12px;
-    color: var(--muted);
-    background: rgba(255,255,255,0.06);
-    padding: 2px 8px;
-    border-radius: 6px;
-  }
-  .hist-time { font-size: 11px; color: var(--muted); min-width: 50px; text-align: right; }
-  .hist-del {
-    background: none;
-    border: none;
-    color: rgba(255,255,255,0.25);
-    font-size: 16px;
-    cursor: pointer;
-    padding: 0 0 0 4px;
-    line-height: 1;
-    transition: color 0.2s;
-    font-family: var(--font);
-  }
-  .hist-del:hover { color: var(--red); }
-  .history-empty { text-align: center; color: var(--muted); font-size: 13px; padding: 20px 0; }
-
-  /* ── Toast ── */
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(100px);
-    background: #1e2028;
-    border: 1px solid rgba(255,255,255,0.12);
-    color: var(--text);
-    padding: 12px 20px;
-    border-radius: 14px;
-    font-size: 14px;
-    font-weight: 500;
-    white-space: nowrap;
-    z-index: 1000;
-    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    max-width: calc(100vw - 32px);
-    white-space: normal;
-    text-align: center;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-  .toast.success { border-color: var(--green); }
-  .toast.error   { border-color: var(--red); }
-
-  /* ── Config Modal ── */
-  .modal-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.7);
-    z-index: 500;
-    display: none;
-    align-items: flex-end;
-    justify-content: center;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal-sheet {
-    background: #1a1d26;
-    border-radius: 24px 24px 0 0;
-    padding: 24px 20px 40px;
-    width: 100%;
-    max-width: 480px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-    animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
-  }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  .modal-title { font-size: 17px; font-weight: 700; margin-bottom: 18px; }
-  .modal-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; display: block; }
-  .modal-input {
-    width: 100%;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 10px;
-    color: var(--text);
-    font-size: 12px;
-    font-family: var(--mono);
-    padding: 10px 12px;
-    margin-bottom: 20px;
-    outline: none;
-    word-break: break-all;
-  }
-  .modal-input:focus { border-color: var(--gold); }
-  .modal-close {
-    width: 100%;
-    height: 50px;
-    background: rgba(245,197,24,0.12);
-    border: 1.5px solid var(--gold);
-    color: var(--gold);
-    border-radius: 14px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    font-family: var(--font);
+  .m-in:focus{border-color:var(--gold);}
+  .m-close{
+    width:100%;height:50px;background:var(--ga);border:1.5px solid var(--gold);
+    color:var(--gold);border-radius:14px;font-size:15px;font-weight:700;
+    cursor:pointer;font-family:var(--font);
   }
 </style>
 </head>
 <body>
 
-<header>
-  <div class="header-left">
-    <span class="header-title">APV Rouen</span>
-    <span class="header-sub">Mary Automobiles</span>
-  </div>
-  <div class="header-right">
+<header class="hdr">
+  <img class="hdr-logo" src="data:image/png;base64,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" alt="Mary Automobiles">
+  <div class="hdr-right">
     <span class="badge-rc">RC</span>
-    <button class="gear-btn" id="gearBtn" title="Paramètres">⚙</button>
+    <button class="gear" id="gearBtn">⚙</button>
   </div>
 </header>
 
 <div class="app">
 
-  <!-- OR display -->
-  <div class="or-display" id="orDisplay"></div>
+  <div class="or-wrap" id="orWrap"></div>
 
-  <!-- Label preview -->
-  <div class="preview-wrap">
-    <div class="label-preview">
-      <div class="lp-header">
-        <div class="lp-brand">
-          <div class="lp-mary">MARY</div>
-          <div class="lp-auto">Automobiles</div>
-        </div>
-        <div class="lp-rc-box">RC</div>
+  <div class="preview-card">
+    <span class="preview-chip">Aperçu impression — 105 × 53 mm</span>
+    <div class="label">
+      <div class="lb-hdr">
+        <img class="lb-logo" src="data:image/png;base64,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" alt="Mary Automobiles">
+        <div class="lb-rc">RC</div>
       </div>
-      <div class="lp-sep-thick"></div>
-      <div class="lp-body">
-        <div class="lp-ordre">O R D R E &nbsp; D E &nbsp; R É P A R A T I O N</div>
-        <div class="lp-digits" id="prevOR">_ _ _ _ _ _</div>
+      <div class="lb-sep-h"></div>
+      <div class="lb-body">
+        <div class="lb-or ph" id="prevOR">— — — — — —</div>
       </div>
-      <div class="lp-sep-thin"></div>
-      <div class="lp-footer">
-        <div class="lp-date" id="prevDate"></div>
+      <div class="lb-sep-f"></div>
+      <div class="lb-ftr">
+        <span class="lb-ordre">Ordre de réparation</span>
+        <span class="lb-date" id="prevDate"></span>
       </div>
     </div>
   </div>
 
-  <!-- Copies row -->
-  <div class="copies-row">
-    <button class="qty-btn qty-minus" id="qtyMinus">−</button>
-    <div class="qty-center">
-      <div class="qty-num" id="qtyNum">1</div>
-      <div class="qty-label">étiquette(s)</div>
+  <div class="copies">
+    <button class="qty-btn qty-m" id="qm">−</button>
+    <div class="qty-c">
+      <div class="qty-n" id="qNum">1</div>
+      <div class="qty-l">étiquette(s)</div>
     </div>
-    <button class="qty-btn qty-plus" id="qtyPlus">+</button>
+    <button class="qty-btn qty-p" id="qp">+</button>
   </div>
 
-  <!-- Numpad -->
-  <div class="numpad" id="numpad">
-    <button class="num-key" data-d="1">1</button>
-    <button class="num-key" data-d="2">2</button>
-    <button class="num-key" data-d="3">3</button>
-    <button class="num-key" data-d="4">4</button>
-    <button class="num-key" data-d="5">5</button>
-    <button class="num-key" data-d="6">6</button>
-    <button class="num-key" data-d="7">7</button>
-    <button class="num-key" data-d="8">8</button>
-    <button class="num-key" data-d="9">9</button>
-    <button class="num-key empty-key"></button>
-    <button class="num-key" data-d="0">0</button>
-    <button class="num-key del" id="delKey">←</button>
+  <div class="numpad">
+    <button class="nk" data-d="1">1</button>
+    <button class="nk" data-d="2">2</button>
+    <button class="nk" data-d="3">3</button>
+    <button class="nk" data-d="4">4</button>
+    <button class="nk" data-d="5">5</button>
+    <button class="nk" data-d="6">6</button>
+    <button class="nk" data-d="7">7</button>
+    <button class="nk" data-d="8">8</button>
+    <button class="nk" data-d="9">9</button>
+    <button class="nk ghost"></button>
+    <button class="nk" data-d="0">0</button>
+    <button class="nk del" id="delBtn">⌫</button>
   </div>
 
-  <!-- Send button -->
-  <button class="send-btn disabled" id="sendBtn" disabled>Encore 6 chiffre(s)</button>
+  <button class="send off" id="sendBtn" disabled>Saisir un numéro d'OR</button>
 
-  <!-- History -->
-  <div class="history-section">
-    <div class="history-header">
-      <span class="history-title">Historique</span>
-      <button class="clear-all" id="clearAll" style="display:none">Effacer tout</button>
+  <div class="hist-wrap">
+    <div class="hist-hdr">
+      <span class="hist-ttl">Historique</span>
+      <button class="clr-all" id="clrAll" style="display:none">Effacer tout</button>
     </div>
-    <div class="history-list" id="historyList"></div>
+    <div class="hist-list" id="histList"></div>
   </div>
 
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- Config Modal -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal-sheet">
-    <div class="modal-title">⚙ Paramètres</div>
-    <label class="modal-label">URL Apps Script</label>
-    <input type="text" class="modal-input" id="urlInput" />
-    <button class="modal-close" id="modalClose">Fermer</button>
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="m-title">⚙ Paramètres</div>
+    <label class="m-lbl">URL Google Apps Script</label>
+    <input type="text" class="m-in" id="urlIn">
+    <button class="m-close" id="mClose">Enregistrer et fermer</button>
   </div>
 </div>
 
 <script>
-  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbza-arjDM1G-bkWUtM3eqKSMQquQRkYEtxitpS4n2f-SQn7CtHXQDQbJY0mlFI7_9vkgA/exec';
-  let orStr = '';
-  let qty = 1;
-  let sending = false;
-
-  function getURL() {
-    return localStorage.getItem('apv_url') || DEFAULT_URL;
-  }
+  const DEFAULT_URL = 'https://script.google.com/macros/s/AKfycbz8kQta2W5pmHTeVTiSJXvJS0Rw_Sy_eTr0KNQGktTLHXdpP5vErNtkb9cbfkEduGDJ5A/exec';
+  let orStr = '', qty = 1, busy = false;
+  const getURL = () => localStorage.getItem('apv_url') || DEFAULT_URL;
 
   function nowFR() {
-    const n = new Date();
-    const dd = String(n.getDate()).padStart(2,'0');
-    const mm = String(n.getMonth()+1).padStart(2,'0');
-    const yyyy = n.getFullYear();
-    const hh = String(n.getHours()).padStart(2,'0');
-    const mi = String(n.getMinutes()).padStart(2,'0');
-    return `${dd}/${mm}/${yyyy}  ${hh}:${mi}`;
+    const n = new Date(), p = v => String(v).padStart(2,'0');
+    return `${p(n.getDate())}/${p(n.getMonth()+1)}/${n.getFullYear()}  ${p(n.getHours())}:${p(n.getMinutes())}`;
+  }
+  function relTime(ts) {
+    const s = Math.floor((Date.now()-new Date(ts))/1000);
+    if(s<60)return s+'s'; if(s<3600)return Math.floor(s/60)+'min';
+    if(s<86400)return Math.floor(s/3600)+'h'; return Math.floor(s/86400)+'j';
   }
 
-  function relativeTime(ts) {
-    const diff = Math.floor((Date.now() - new Date(ts).getTime()) / 1000);
-    if (diff < 60) return `${diff}s`;
-    if (diff < 3600) return `${Math.floor(diff/60)}min`;
-    if (diff < 86400) return `${Math.floor(diff/3600)}h`;
-    return `${Math.floor(diff/86400)}j`;
+  function initCells() {
+    const w = document.getElementById('orWrap'); w.innerHTML='';
+    for(let i=0;i<6;i++){
+      const c=document.createElement('div');
+      c.id='oc'+i; c.className='or-cell empty'+(i===0?' active':''); c.textContent='·';
+      w.appendChild(c);
+    }
+  }
+  function renderCells() {
+    for(let i=0;i<6;i++){
+      const el=document.getElementById('oc'+i);
+      if(i<orStr.length){el.textContent=orStr[i];el.className='or-cell';}
+      else if(i===orStr.length){el.textContent='·';el.className='or-cell empty active';}
+      else{el.textContent='·';el.className='or-cell empty';}
+    }
+  }
+
+  /* Aperçu étiquette — OR centré, taille adaptée, pas de placeholder vide */
+  function renderLabel() {
+    const el = document.getElementById('prevOR');
+    document.getElementById('prevDate').textContent = nowFR();
+    if(orStr.length===0){
+      el.className='lb-or ph';
+      el.textContent='— — — — — —';
+      el.style.fontSize=''; el.style.letterSpacing='';
+      return;
+    }
+    el.className='lb-or';
+    el.textContent=orStr;
+    const cfg = [null,
+      {f:74,ls:'14px'},{f:74,ls:'12px'},{f:68,ls:'10px'},
+      {f:60,ls:'8px'},{f:52,ls:'6px'},{f:44,ls:'4px'}
+    ][orStr.length] || {f:44,ls:'4px'};
+    el.style.fontSize=cfg.f+'px';
+    el.style.letterSpacing=cfg.ls;
+  }
+
+  function renderBtn() {
+    const btn=document.getElementById('sendBtn');
+    if(busy){
+      btn.className='send busy';btn.disabled=true;
+      btn.innerHTML='<div class="spin"></div>&nbsp;Envoi…';
+    } else if(orStr.length>=1){
+      btn.className='send ready';btn.disabled=false;
+      btn.textContent=`🖨  Imprimer OR ${orStr}`;
+    } else {
+      btn.className='send off';btn.disabled=true;
+      btn.textContent="Saisir un numéro d'OR";
+    }
   }
 
   function render() {
-    // OR cells
-    const display = document.getElementById('orDisplay');
-    display.innerHTML = '';
-    for (let i = 0; i < 6; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'or-cell';
-      if (i < orStr.length) {
-        cell.textContent = orStr[i];
-      } else if (i === orStr.length) {
-        cell.textContent = '·';
-        cell.classList.add('empty', 'active');
-      } else {
-        cell.textContent = '·';
-        cell.classList.add('empty');
-      }
-      display.appendChild(cell);
-    }
-
-    // Label preview
-    const prevOR = document.getElementById('prevOR');
-    if (orStr.length === 0) {
-      prevOR.textContent = '_ _ _ _ _ _';
-      prevOR.style.color = '#ccc';
-    } else {
-      prevOR.textContent = orStr.padEnd(6, '_').split('').join(' ');
-      prevOR.style.color = '#000';
-    }
-    document.getElementById('prevDate').textContent = nowFR();
-
-    // Send button
-    const btn = document.getElementById('sendBtn');
-    const rem = 6 - orStr.length;
-    if (orStr.length === 6 && !sending) {
-      btn.className = 'send-btn ready';
-      btn.disabled = false;
-      btn.innerHTML = `🖨 Imprimer OR ${orStr}`;
-    } else if (sending) {
-      btn.className = 'send-btn loading';
-      btn.disabled = true;
-      btn.innerHTML = `<div class="spinner"></div> Envoi en cours…`;
-    } else {
-      btn.className = 'send-btn disabled';
-      btn.disabled = true;
-      btn.innerHTML = `Encore ${rem} chiffre(s)`;
-    }
-
-    // Copies
-    document.getElementById('qtyNum').textContent = qty;
+    renderCells(); renderLabel(); renderBtn();
+    document.getElementById('qNum').textContent=qty;
   }
 
-  function getHistory() {
-    try { return JSON.parse(localStorage.getItem('apv_history') || '[]'); } catch(e) { return []; }
-  }
-  function saveHistory(h) {
-    localStorage.setItem('apv_history', JSON.stringify(h));
-  }
-
-  function renderHistory() {
-    const h = getHistory();
-    const list = document.getElementById('historyList');
-    const clearBtn = document.getElementById('clearAll');
-    clearBtn.style.display = h.length ? '' : 'none';
-    if (h.length === 0) {
-      list.innerHTML = '<div class="history-empty">Aucun historique</div>';
-      return;
-    }
-    list.innerHTML = h.slice().reverse().map((item, ri) => {
-      const i = h.length - 1 - ri;
-      return `<div class="history-item">
-        <span class="hist-or">${item.or}</span>
-        <span class="hist-qty">×${item.qty}</span>
-        <span class="hist-time">${relativeTime(item.ts)}</span>
-        <button class="hist-del" onclick="deleteHistory(${i})">×</button>
-      </div>`;
+  const getH=()=>{try{return JSON.parse(localStorage.getItem('apv_h')||'[]');}catch{return[];}};
+  const saveH=h=>localStorage.setItem('apv_h',JSON.stringify(h));
+  function renderH() {
+    const h=getH(),list=document.getElementById('histList'),clr=document.getElementById('clrAll');
+    clr.style.display=h.length?'':'none';
+    if(!h.length){list.innerHTML='<div class="hist-empty">Aucun historique</div>';return;}
+    list.innerHTML=h.slice().reverse().map((it,ri)=>{
+      const idx=h.length-1-ri;
+      return `<div class="hi"><div class="hi-dot"></div>
+        <span class="hi-or">${it.or}</span>
+        <span class="hi-qty">×${it.qty}</span>
+        <span class="hi-t">${relTime(it.ts)}</span>
+        <button class="hi-del" onclick="delH(${idx})">×</button></div>`;
     }).join('');
   }
+  function delH(i){const h=getH();h.splice(i,1);saveH(h);renderH();}
+  function addH(or,q){let h=getH();h.push({or,qty:q,ts:new Date().toISOString()});if(h.length>20)h=h.slice(-20);saveH(h);renderH();}
 
-  function deleteHistory(i) {
-    const h = getHistory();
-    h.splice(i, 1);
-    saveHistory(h);
-    renderHistory();
+  let tT;
+  function showToast(msg,type=''){
+    const t=document.getElementById('toast');
+    t.className=`toast ${type}`;t.textContent=msg;
+    clearTimeout(tT);t.getBoundingClientRect();t.classList.add('show');
+    tT=setTimeout(()=>t.classList.remove('show'),3200);
   }
 
-  function addHistory(or, q) {
-    let h = getHistory();
-    h.push({ or, qty: q, ts: new Date().toISOString() });
-    if (h.length > 15) h = h.slice(h.length - 15);
-    saveHistory(h);
-    renderHistory();
+  async function send(){
+    if(orStr.length<1||busy)return;
+    const or=orStr,q=qty;busy=true;render();
+    const ts=new Date().toISOString();
+    const url=`${getURL()}?or=${encodeURIComponent(or)}&qty=${q}&magasinier=RC&ts=${encodeURIComponent(ts)}`;
+    try{
+      await fetch(url,{mode:'no-cors'});
+      addH(or,q);showToast(`✓ OR ${or} × ${q} — envoyé`,'ok');
+      orStr='';qty=1;
+    }catch(e){showToast('✗ Erreur réseau','err');}
+    busy=false;render();
   }
 
-  let toastTimer;
-  function showToast(msg, type='') {
-    const t = document.getElementById('toast');
-    t.className = `toast ${type}`;
-    t.textContent = msg;
-    clearTimeout(toastTimer);
-    // force reflow
-    t.getBoundingClientRect();
-    t.classList.add('show');
-    toastTimer = setTimeout(() => { t.classList.remove('show'); }, 3000);
-  }
-
-  async function send() {
-    if (orStr.length !== 6 || sending) return;
-    const orNow = orStr;
-    const qtyNow = qty;
-    sending = true;
-    render();
-    const ts = new Date().toISOString();
-    const url = `${getURL()}?or=${encodeURIComponent(orNow)}&qty=${qtyNow}&magasinier=RC&ts=${encodeURIComponent(ts)}`;
-    try {
-      await fetch(url, { mode: 'no-cors' });
-      addHistory(orNow, qtyNow);
-      showToast(`✓ Envoyé — OR ${orNow} × ${qtyNow} copie(s)`, 'success');
-      orStr = '';
-      qty = 1;
-    } catch(e) {
-      showToast('✗ Erreur réseau', 'error');
-    }
-    sending = false;
-    render();
-  }
-
-  // Numpad
-  document.getElementById('numpad').addEventListener('click', e => {
-    const key = e.target.closest('.num-key');
-    if (!key || key.classList.contains('empty-key')) return;
-    if (key === document.getElementById('delKey')) {
-      orStr = orStr.slice(0, -1);
-    } else {
-      const d = key.dataset.d;
-      if (d !== undefined && orStr.length < 6) orStr += d;
-    }
-    // press animation
-    key.classList.add('pressed');
-    setTimeout(() => key.classList.remove('pressed'), 120);
+  document.querySelector('.numpad').addEventListener('click',e=>{
+    const k=e.target.closest('.nk');
+    if(!k||k.classList.contains('ghost'))return;
+    if(k.id==='delBtn'){orStr=orStr.slice(0,-1);}
+    else if(k.dataset.d!==undefined&&orStr.length<6){orStr+=k.dataset.d;}
+    k.classList.add('hit');setTimeout(()=>k.classList.remove('hit'),100);
     render();
   });
+  document.getElementById('qm').addEventListener('click',()=>{if(qty>1){qty--;render();}});
+  document.getElementById('qp').addEventListener('click',()=>{if(qty<99){qty++;render();}});
+  document.getElementById('sendBtn').addEventListener('click',send);
+  document.getElementById('clrAll').addEventListener('click',()=>{saveH([]);renderH();});
 
-  // Qty buttons
-  document.getElementById('qtyMinus').addEventListener('click', () => { if (qty > 1) { qty--; render(); } });
-  document.getElementById('qtyPlus').addEventListener('click', () => { if (qty < 99) { qty++; render(); } });
+  const ov=document.getElementById('overlay');
+  document.getElementById('gearBtn').addEventListener('click',()=>{document.getElementById('urlIn').value=getURL();ov.classList.add('open');});
+  const closeM=()=>{localStorage.setItem('apv_url',document.getElementById('urlIn').value.trim()||DEFAULT_URL);ov.classList.remove('open');};
+  document.getElementById('mClose').addEventListener('click',closeM);
+  ov.addEventListener('click',e=>{if(e.target===ov)closeM();});
 
-  // Send
-  document.getElementById('sendBtn').addEventListener('click', send);
-
-  // History clear
-  document.getElementById('clearAll').addEventListener('click', () => {
-    saveHistory([]);
-    renderHistory();
+  document.addEventListener('keydown',e=>{
+    if(ov.classList.contains('open'))return;
+    if(e.key>='0'&&e.key<='9'){if(orStr.length<6){orStr+=e.key;render();}}
+    else if(e.key==='Backspace'){orStr=orStr.slice(0,-1);render();}
+    else if(e.key==='Enter')send();
   });
 
-  // Config modal
-  document.getElementById('gearBtn').addEventListener('click', () => {
-    document.getElementById('urlInput').value = getURL();
-    document.getElementById('modalOverlay').classList.add('open');
-  });
-  document.getElementById('modalClose').addEventListener('click', () => {
-    localStorage.setItem('apv_url', document.getElementById('urlInput').value.trim() || DEFAULT_URL);
-    document.getElementById('modalOverlay').classList.remove('open');
-  });
-  document.getElementById('modalOverlay').addEventListener('click', e => {
-    if (e.target === document.getElementById('modalOverlay')) {
-      localStorage.setItem('apv_url', document.getElementById('urlInput').value.trim() || DEFAULT_URL);
-      document.getElementById('modalOverlay').classList.remove('open');
-    }
-  });
-
-  // Keyboard support
-  document.addEventListener('keydown', e => {
-    if (document.getElementById('modalOverlay').classList.contains('open')) return;
-    if (e.key >= '0' && e.key <= '9') {
-      if (orStr.length < 6) { orStr += e.key; render(); }
-    } else if (e.key === 'Backspace') {
-      orStr = orStr.slice(0, -1); render();
-    } else if (e.key === 'Enter') {
-      send();
-    }
-  });
-
-  // Refresh history timestamps
-  setInterval(renderHistory, 30000);
-
-  // Refresh date in preview every 30s
-  setInterval(render, 30000);
-
-  // Init
-  render();
-  renderHistory();
+  setInterval(()=>{renderH();renderLabel();},30000);
+  initCells(); render(); renderH();
 </script>
 </body>
 </html>
